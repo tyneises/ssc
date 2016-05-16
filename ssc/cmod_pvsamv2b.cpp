@@ -16,7 +16,12 @@
 static var_info _cm_vtab_pvsamv2b[] = {
 	/* VARTYPE           DATATYPE         NAME                                   LABEL                                                         UNITS     META                                                   GROUP                      REQUIRED_IF           CONSTRAINTS               UI_HINTS*/
 	//{ SSC_INPUT,        SSC_NUMBER,      "pv_lifetime_simulation",              "PV lifetime simulation",                                      "0/1",    "",                                                   "pvsamv2",                  "+=0",               "INTEGER,MIN=0,MAX=1",          "" },
+	//INPUTS
 	{ SSC_INPUT,        SSC_ARRAY,       "soiling",                   "Monthly soiling loss",                      "%",       "",                              "pvsamv1",              "*",                        "LENGTH=12",                      "" },         
+	
+	//OUTPUTS
+	{ SSC_OUTPUT,       SSC_ARRAY,       "month",                     "Month",                                      "",   "",                          "Time Series (Subarray 4)",       "",                    "",                              "" },
+	{ SSC_OUTPUT,       SSC_ARRAY,       "pretend_poa_eff",           "POA total irradiance after soiling",         "W/m2",   "",                      "Time Series (Subarray 4)",       "",                    "",                              "" },
 
 	var_info_invalid };
 
@@ -50,11 +55,12 @@ public:
 
 		//ALLOCATE OUTPUTS****************************************************************************************************************************************************************************
 		//Again, if this becomes a meta-compute module, outputs are allocated individually by functions++++ Somehow we have to know what has been created by what point, though.
-		std::vector<double> ibeam, idiff, ipoa, month;
+		ssc_number_t *month = allocate("month", nrec);
+		std::vector<double> ibeam, idiff, ipoa;
 		ibeam.reserve(nrec);
 		idiff.reserve(nrec);
 		ipoa.reserve(nrec);
-		month.reserve(nrec);
+		ssc_number_t *pretend_poa_eff = allocate("pretend_poa_eff", nrec);
 
 		//LIFETIME LOOP*******************************************************************************************************************************************************************************
 		//This loop goes through the number of years in the simulation. 
@@ -68,11 +74,14 @@ public:
 				//faking this for now++++++++++++
 				for (int i = 0; i < 8760; i++)
 				{
-					ibeam[i] = 500;
-					idiff[i] = 200;
-					month[i] = floor(i / 720);
+					ibeam.push_back(500);
+					idiff.push_back(200);
+					//faking this for now++++++++++++++++++++
+					month[i] = floor(i / 720) + 1;
+					if (month[i] > 12) month[i] = 12;
 				}
 
+				//SUBARRAY LOOP WOULD GO HERE++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 				//CALCULATE SUN POSITION
 
 				//CALCULATE TRACKER POSITION AND SURFACE ANGLES
@@ -80,7 +89,7 @@ public:
 				//CALCULATE POA
 				//faking this for now++++++++++++
 				for (int i = 0; i < 8760; i++)
-					ipoa[i] = 600;
+					ipoa.push_back(600);
 
 				//APPLY SHADING (3D, SHADING FACTORS, SHADING DATABASE, SELF-SHADING)
 
@@ -96,6 +105,10 @@ public:
 					apply_soiling_loss_b(nrec, month, soiling, &idiff);
 					apply_soiling_loss_b(nrec, month, soiling, &ipoa);
 				}
+				//assign pretend ipoa output for irradiance after soiling
+				//there's probably a better way to store and assign these arrays...++++++++++++++++++++++++++++++++++++++++++++++++++++
+				for (int i = 0; i < 8760; i++)
+					pretend_poa_eff[i] = (ssc_number_t) ipoa[i];
 			}
 
 			//ALL YEARS (YEAR 1 AND FORWARD): MODULE TEMP, POWER, MPPT, INVERTER, BATTERY, LOSSES, ETC... EVERYTHING FROM THE MODULE AND DOWNSTREAM.**************************************************
