@@ -1,6 +1,12 @@
 //right now soiling is the only required variable, you'll need to add your own!
 soiling = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
+acwiring_loss = 1;
+transformer_loss = 1;
+
 var('soiling', soiling);
+var('acwiring_loss', acwiring_loss);
+var('transformer_loss', transformer_loss)
+
 run('pvsamv2b');
 outln(var('month'));
 outln(var('pretend_poa_eff'));

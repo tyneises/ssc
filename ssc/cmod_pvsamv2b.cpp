@@ -14,14 +14,29 @@
 
 //VARIABLE TABLE COULD BE MOVED TO BE WITH SECTIONS OF CODE++++++++++++
 static var_info _cm_vtab_pvsamv2b[] = {
-	/* VARTYPE           DATATYPE         NAME                                   LABEL                                                         UNITS     META                                                   GROUP                      REQUIRED_IF           CONSTRAINTS               UI_HINTS*/
-	//{ SSC_INPUT,        SSC_NUMBER,      "pv_lifetime_simulation",              "PV lifetime simulation",                                      "0/1",    "",                                                   "pvsamv2",                  "+=0",               "INTEGER,MIN=0,MAX=1",          "" },
-	//INPUTS
-	{ SSC_INPUT,        SSC_ARRAY,       "soiling",                   "Monthly soiling loss",                      "%",       "",                              "pvsamv1",              "*",                        "LENGTH=12",                      "" },         
-	
-	//OUTPUTS
-	{ SSC_OUTPUT,       SSC_ARRAY,       "month",                     "Month",                                      "",   "",                          "Time Series (Subarray 4)",       "",                    "",                              "" },
-	{ SSC_OUTPUT,       SSC_ARRAY,       "pretend_poa_eff",           "POA total irradiance after soiling",         "W/m2",   "",                      "Time Series (Subarray 4)",       "",                    "",                              "" },
+	/* VARTYPE           DATATYPE         NAME                                   LABEL                                      UNITS     META      GROUP        REQUIRED_IF           CONSTRAINTS               UI_HINTS*/
+	//{ SSC_INPUT,        SSC_NUMBER,      "pv_lifetime_simulation",            "PV lifetime simulation",                     "0/1",    "",       "pvsamv2",   "+=0",               "INTEGER,MIN=0,MAX=1",          "" },
+	//INPUTS																																												    
+	{ SSC_INPUT,        SSC_ARRAY,       "soiling",                            "Monthly soiling loss",                       "%",      "",      "pvsamv1",                         "*",             "LENGTH=12",     "" },         
+	{ SSC_INPUT,        SSC_NUMBER,      "acwiring_loss",                      "AC wiring loss",                             "%",      "",      "pvsamv1",                         "*",             "MIN=0,MAX=100", "" },
+	{ SSC_INPUT,        SSC_NUMBER,      "transformer_loss",                   "AC step-up transformer loss",                "%",      "",      "pvsamv1",                         "*",             "MIN=0,MAX=100", "" },
+
+	//OUTPUTS														          														   										    
+	{ SSC_OUTPUT,       SSC_ARRAY,       "month",                              "Month",                                      "",       "",      "Time Series (Subarray 4)",        "",              "",              "" },
+	{ SSC_OUTPUT,       SSC_ARRAY,       "pretend_poa_eff",                    "POA total irradiance after soiling",         "W/m2",   "",      "Time Series (Subarray 4)",        "",              "",              "" },
+																																	   
+	// AC LOSSES								
+	{ SSC_OUTPUT,       SSC_NUMBER,      "ac_loss",                            "Interconnection AC loss",                    "%",      "",      "Annual",                          "*",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_inv_clip_loss_percent",    "AC inverter power clipping loss",            "%",      "",      "Loss",                            "*",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_inv_pso_loss_percent",     "AC inverter power consumption loss",         "%",      "",      "Loss",                            "*",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_inv_pnt_loss_percent",     "AC inverter night tare loss",                "%",      "",      "Loss",                            "*",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_inv_eff_loss_percent",     "AC inverter efficiency loss",                "%",      "",      "Loss",                            "*",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_wiring_loss_percent",      "AC wiring loss",                             "%",      "",      "Loss",                            "*",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_transformer_loss_percent", "AC step-up transformer loss",                "%",      "",      "Loss",                            "*",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_perf_adj_loss_percent",    "AC performance adjustment loss",             "%",      "",      "Loss",                            "*",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_wiring_loss",              "AC wiring loss",                            "kWh",     "",      "Annual",                          "*",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_transformer_loss",         "AC step-up transformer loss",               "kWh",     "",      "Annual",                          "*",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_dc_optimizer_loss",           "DC power optimizer loss",                   "kWh",     "",      "Annual",                          "*",             "",              "" },
 
 	var_info_invalid };
 
@@ -50,6 +65,11 @@ public:
 		size_t soiling_length = 0;
 		ssc_number_t *soiling = as_array("soiling", &soiling_length); //don't need to error check length of soiling array because it is constrained to 12 in variable table
 
+		// AC Losses
+		double ac_derate = (1 - as_double("acwiring_loss") / 100) * (1 - as_double("transformer_loss") / 100);	
+		double ac_loss_percent = (1 - ac_derate) * 100;
+		assign("ac_loss", var_data((ssc_number_t)ac_loss_percent));
+
 		//MODEL OVERRIDES*****************************************************************************************************************************************************************************
 		bool user_soiling_model = false; //eventually read in from UI++++++++++++++++++++++++
 
@@ -61,6 +81,11 @@ public:
 		idiff.reserve(nrec);
 		ipoa.reserve(nrec);
 		ssc_number_t *pretend_poa_eff = allocate("pretend_poa_eff", nrec);
+		ssc_number_t *p_gen = allocate("p_gen", nrec);
+
+		double acpwr_gross = 800.;
+		for (int i = 0; i != nrec; i++)
+			p_gen[i] = 100;
 
 		//LIFETIME LOOP*******************************************************************************************************************************************************************************
 		//This loop goes through the number of years in the simulation. 
@@ -122,10 +147,11 @@ public:
 			//DC LOSSES
 
 			//INVERTER MODEL
-
+			
 			//BATTERY MODEL
 
 			//AC LOSSES
+			apply_ac_loss(current_year, p_gen, acpwr_gross, ac_loss_percent);
 
 		}
 	}
