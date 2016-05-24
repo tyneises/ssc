@@ -187,6 +187,7 @@ public:
 	var_data *lookup( const std::string &name ) throw( general_error );
 	var_data *assign( const std::string &name, const var_data &value ) throw( general_error );
 	ssc_number_t *allocate( const std::string &name, size_t length ) throw( general_error );
+	ssc_number_t *allocate_fill( const std::string &name, size_t length, ssc_number_t value ) throw( general_error );
 	ssc_number_t *allocate( const std::string &name, size_t nrows, size_t ncols ) throw( general_error );
 	util::matrix_t<ssc_number_t>& allocate_matrix( const std::string &name, size_t nrows, size_t ncols ) throw( general_error );
 	var_data &value( const std::string &name ) throw( general_error );

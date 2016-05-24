@@ -224,10 +224,16 @@ var_data *compute_module::assign( const std::string &name, const var_data &value
 
 ssc_number_t *compute_module::allocate( const std::string &name, size_t length ) throw( general_error )
 {
+	return allocate_fill( name, length, (ssc_number_t)0.0 );
+}
+
+ssc_number_t *compute_module::allocate_fill( const std::string &name, size_t length, ssc_number_t value ) throw ( general_error )
+{
 	var_data *v = assign(name, var_data());
 	v->type = SSC_ARRAY;
-	v->num.resize_fill( length, 0.0 );
+	v->num.resize_fill( length, value );
 	return v->num.data();
+
 }
 
 ssc_number_t *compute_module::allocate( const std::string &name, size_t nrows, size_t ncols ) throw( general_error )

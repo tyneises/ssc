@@ -5,9 +5,11 @@ transformer_loss = 1;
 
 var('soiling', soiling);
 var('acwiring_loss', acwiring_loss);
-var('transformer_loss', transformer_loss)
+var('transformer_loss', transformer_loss);
 
 run('pvsamv2b');
 outln(var('month'));
 outln(var('pretend_poa_eff'));
+outln(var('solazi'));
+outln(var('solzen'));
 outln('Success!');

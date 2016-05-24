@@ -43,6 +43,7 @@
     <ClInclude Include="..\shared\lib_snowmodel.h" />
     <ClInclude Include="..\shared\lib_soiling.h" />
     <ClInclude Include="..\shared\lib_soiling_b.h" />
+    <ClInclude Include="..\shared\lib_sunpos_b.h" />
     <ClInclude Include="..\shared\lib_util.h" />
     <ClInclude Include="..\shared\lib_weatherfile.h" />
     <ClInclude Include="..\shared\lib_windfile.h" />

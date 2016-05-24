@@ -11,6 +11,7 @@
 
 #include "core.h"
 #include "lib_soiling_b.h"
+#include "lib_sunpos_b.h"
 
 //VARIABLE TABLE COULD BE MOVED TO BE WITH SECTIONS OF CODE++++++++++++
 static var_info _cm_vtab_pvsamv2b[] = {
@@ -22,8 +23,15 @@ static var_info _cm_vtab_pvsamv2b[] = {
 	{ SSC_INPUT,        SSC_NUMBER,      "transformer_loss",                   "AC step-up transformer loss",                "%",      "",      "pvsamv1",                         "*",             "MIN=0,MAX=100", "" },
 
 	//OUTPUTS														          														   										    
-	{ SSC_OUTPUT,       SSC_ARRAY,       "month",                              "Month",                                      "",       "",      "Time Series (Subarray 4)",        "",              "",              "" },
-	{ SSC_OUTPUT,       SSC_ARRAY,       "pretend_poa_eff",                    "POA total irradiance after soiling",         "W/m2",   "",      "Time Series (Subarray 4)",        "",              "",              "" },
+	{ SSC_OUTPUT,       SSC_ARRAY,       "year",                               "Year",                                       "",       "",      "Time Series",                     "",              "",              "" },
+	{ SSC_OUTPUT,       SSC_ARRAY,       "month",                              "Month",                                      "",       "",      "Time Series",                     "",              "",              "" },
+	{ SSC_OUTPUT,       SSC_ARRAY,       "day",                                "Day",                                        "",       "",      "Time Series",                     "",              "",              "" },
+	{ SSC_OUTPUT,       SSC_ARRAY,       "hour",                               "Hour",                                       "",       "",      "Time Series",                     "",              "",              "" },
+	{ SSC_OUTPUT,       SSC_ARRAY,       "minute",                             "Minute",                                     "",       "",      "Time Series",                     "",              "",              "" },
+	{ SSC_OUTPUT,       SSC_ARRAY,       "solazi",                             "Solar azimuth",                              "deg",    "",      "Time Series",                     "",              "",              "" },
+	{ SSC_OUTPUT,       SSC_ARRAY,       "solzen",                             "Solar zenith",                               "deg",    "",      "Time Series",                     "",              "",              "" },
+																																							                     
+	{ SSC_OUTPUT,       SSC_ARRAY,       "pretend_poa_eff",                    "POA total irradiance after soiling",         "W/m2",   "",      "Time Series",                     "",              "",              "" },
 																																	   
 	// AC LOSSES								
 	{ SSC_OUTPUT,       SSC_NUMBER,      "ac_loss",                            "Interconnection AC loss",                    "%",      "",      "Annual",                          "*",             "",              "" },
@@ -61,6 +69,11 @@ public:
 		int nyears = 1; //this would probably be 1 for non-lifetime++++++++++++++++++++++++
 		int nrec = 8760; //how do we know what nrec is up here? we don't actually know until we read the weather file++++++++++++++++++
 
+		// location info would come from weatherfile
+		double lat = 40;
+		double lng = -107;
+		double tz = -1;
+
 		//Soiling
 		size_t soiling_length = 0;
 		ssc_number_t *soiling = as_array("soiling", &soiling_length); //don't need to error check length of soiling array because it is constrained to 12 in variable table
@@ -75,11 +88,20 @@ public:
 
 		//ALLOCATE OUTPUTS****************************************************************************************************************************************************************************
 		//Again, if this becomes a meta-compute module, outputs are allocated individually by functions++++ Somehow we have to know what has been created by what point, though.
-		ssc_number_t *month = allocate("month", nrec);
+		ssc_number_t *year = allocate_fill( "year", nrec, 1990 );
+		ssc_number_t *month = allocate("month", nrec );
+		ssc_number_t *day = allocate_fill( "day", nrec, 17 );
+		ssc_number_t *hour = allocate_fill( "hour", nrec, 11 );
+		ssc_number_t *minute = allocate_fill( "minute", nrec, 15 );
+
 		std::vector<double> ibeam, idiff, ipoa;
 		ibeam.reserve(nrec);
 		idiff.reserve(nrec);
 		ipoa.reserve(nrec);
+		
+		ssc_number_t *p_solazi = allocate( "solazi", nrec );
+		ssc_number_t *p_solzen = allocate( "solzen", nrec );
+
 		ssc_number_t *pretend_poa_eff = allocate("pretend_poa_eff", nrec);
 		ssc_number_t *p_gen = allocate("p_gen", nrec);
 
@@ -108,6 +130,11 @@ public:
 
 				//SUBARRAY LOOP WOULD GO HERE++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 				//CALCULATE SUN POSITION
+				calculate_sun_positions( nrec, year, month, day, hour, minute, 
+					lat, lng, tz,
+					p_solazi, p_solzen );
+
+
 
 				//CALCULATE TRACKER POSITION AND SURFACE ANGLES
 
