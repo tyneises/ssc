@@ -34,17 +34,17 @@ static var_info _cm_vtab_pvsamv2b[] = {
 	{ SSC_OUTPUT,       SSC_ARRAY,       "pretend_poa_eff",                    "POA total irradiance after soiling",         "W/m2",   "",      "Time Series",                     "",              "",              "" },
 																																	   
 	// AC LOSSES								
-	{ SSC_OUTPUT,       SSC_NUMBER,      "ac_loss",                            "Interconnection AC loss",                    "%",      "",      "Annual",                          "*",             "",              "" },
-	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_inv_clip_loss_percent",    "AC inverter power clipping loss",            "%",      "",      "Loss",                            "*",             "",              "" },
-	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_inv_pso_loss_percent",     "AC inverter power consumption loss",         "%",      "",      "Loss",                            "*",             "",              "" },
-	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_inv_pnt_loss_percent",     "AC inverter night tare loss",                "%",      "",      "Loss",                            "*",             "",              "" },
-	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_inv_eff_loss_percent",     "AC inverter efficiency loss",                "%",      "",      "Loss",                            "*",             "",              "" },
-	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_wiring_loss_percent",      "AC wiring loss",                             "%",      "",      "Loss",                            "*",             "",              "" },
-	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_transformer_loss_percent", "AC step-up transformer loss",                "%",      "",      "Loss",                            "*",             "",              "" },
-	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_perf_adj_loss_percent",    "AC performance adjustment loss",             "%",      "",      "Loss",                            "*",             "",              "" },
-	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_wiring_loss",              "AC wiring loss",                            "kWh",     "",      "Annual",                          "*",             "",              "" },
-	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_transformer_loss",         "AC step-up transformer loss",               "kWh",     "",      "Annual",                          "*",             "",              "" },
-	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_dc_optimizer_loss",           "DC power optimizer loss",                   "kWh",     "",      "Annual",                          "*",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "ac_loss",                            "Interconnection AC loss",                    "%",      "",      "Annual",                          "",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_inv_clip_loss_percent",    "AC inverter power clipping loss",            "%",      "",      "Loss",                            "",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_inv_pso_loss_percent",     "AC inverter power consumption loss",         "%",      "",      "Loss",                            "",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_inv_pnt_loss_percent",     "AC inverter night tare loss",                "%",      "",      "Loss",                            "",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_inv_eff_loss_percent",     "AC inverter efficiency loss",                "%",      "",      "Loss",                            "",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_wiring_loss_percent",      "AC wiring loss",                             "%",      "",      "Loss",                            "",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_transformer_loss_percent", "AC step-up transformer loss",                "%",      "",      "Loss",                            "",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_perf_adj_loss_percent",    "AC performance adjustment loss",             "%",      "",      "Loss",                            "",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_wiring_loss",              "AC wiring loss",                            "kWh",     "",      "Annual",                          "",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_ac_transformer_loss",         "AC step-up transformer loss",               "kWh",     "",      "Annual",                          "",             "",              "" },
+	{ SSC_OUTPUT,       SSC_NUMBER,      "annual_dc_optimizer_loss",           "DC power optimizer loss",                   "kWh",     "",      "Annual",                          "",             "",              "" },
 
 	var_info_invalid };
 
@@ -173,7 +173,7 @@ public:
 
 			//DC LOSSES
 
-			//INVERTER MODEL
+			//INVERTER MODEL - working on it!
 			
 			//BATTERY MODEL
 
