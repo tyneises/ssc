@@ -35,11 +35,13 @@
     <ClInclude Include="..\shared\lib_physics.h" />
     <ClInclude Include="..\shared\lib_powerblock.h" />
     <ClInclude Include="..\shared\lib_pvinv.h" />
+    <ClInclude Include="..\shared\lib_pvinv_b.h" />
     <ClInclude Include="..\shared\lib_pvmodel.h" />
     <ClInclude Include="..\shared\lib_pvshade.h" />
     <ClInclude Include="..\shared\lib_pvwatts.h" />
     <ClInclude Include="..\shared\lib_pv_shade_loss_mpp.h" />
     <ClInclude Include="..\shared\lib_sandia.h" />
+    <ClInclude Include="..\shared\lib_sandia_b.h" />
     <ClInclude Include="..\shared\lib_snowmodel.h" />
     <ClInclude Include="..\shared\lib_soiling.h" />
     <ClInclude Include="..\shared\lib_soiling_b.h" />
@@ -62,11 +64,13 @@
     <ClCompile Include="..\shared\lib_physics.cpp" />
     <ClCompile Include="..\shared\lib_powerblock.cpp" />
     <ClCompile Include="..\shared\lib_pvinv.cpp" />
+    <ClCompile Include="..\shared\lib_pvinv_b.cpp" />
     <ClCompile Include="..\shared\lib_pvmodel.cpp" />
     <ClCompile Include="..\shared\lib_pvshade.cpp" />
     <ClCompile Include="..\shared\lib_pvwatts.cpp" />
     <ClCompile Include="..\shared\lib_pv_shade_loss_mpp.cpp" />
     <ClCompile Include="..\shared\lib_sandia.cpp" />
+    <ClCompile Include="..\shared\lib_sandia_b.cpp" />
     <ClCompile Include="..\shared\lib_snowmodel.cpp" />
     <ClCompile Include="..\shared\lib_util.cpp" />
     <ClCompile Include="..\shared\lib_weatherfile.cpp" />

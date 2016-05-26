@@ -16,11 +16,11 @@ void apply_soiling_loss_b(int nrec, ssc_number_t *month, ssc_number_t *soiling_l
 
 }
 
-void apply_ac_loss(int current_year, ssc_number_t *p_gen, double acpwr_gross, double ac_loss_percent)
+void apply_ac_loss(int nrec, int current_year, ssc_number_t *p_gen, util::matrix_t<ssc_number_t> &acpwr_gross, double ac_loss_percent)
 {
-	// would also need to know the timestep
-	int begin = current_year * 8760; 
-	int end = (current_year + 1) * 8760;
-	for (int i = begin; i != end; i++)
-		p_gen[i] = (ssc_number_t)((acpwr_gross - (fabs(acpwr_gross) * ac_loss_percent / 100)) * 0.001);
+	// p_gen is lifetime (nrec*nyears) and p_acpwr_gross is for current year (nrec)
+	// assumes current year is 0 based
+	size_t begin = current_year * nrec; 
+	for (size_t i = 0; i != nrec; i++)
+		p_gen[i + begin] = (ssc_number_t)((acpwr_gross.at(i) - (fabs(acpwr_gross.at(i)) * ac_loss_percent / 100)) * 0.001);
 }
