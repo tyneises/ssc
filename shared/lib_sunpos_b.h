@@ -6,7 +6,7 @@ void calculate_sun_positions( size_t Nrec,
 	ssc_number_t *solazi, ssc_number_t *solzen )
 {
 	double sundata[9];
-	for( size_t i=0;i<8760;i++ )
+	for( size_t i=0;i<Nrec;i++ )
 	{	
 		// comments from irradproc:
 		//   sunn[0] = azm = sun azimuth in radians, measured east from north, 0 to 2*pi
