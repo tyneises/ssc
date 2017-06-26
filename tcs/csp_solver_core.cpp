@@ -1,8 +1,8 @@
+#include "csp_dispatch.h"
 #include "csp_solver_core.h"
 #include "csp_solver_util.h"
 
 #include "lib_util.h"
-#include "csp_dispatch.h"
 
 #include <algorithm>
 
@@ -477,8 +477,12 @@ void C_csp_solver::Ssimulate(C_csp_solver::S_sim_setup & sim_setup)
 	mc_kernel.init(sim_setup, wf_step, baseline_step, mc_csp_messages);
 
     //instantiate dispatch optimization object
+<<<<<<< Updated upstream
     //csp_dispatch_opt *dispatch = &mc_tou.dispatch;
     csp_dispatch_opt *dispatch;
+=======
+    csp_dispatch_opt *dispatch = &mc_tou.dispatch;
+>>>>>>> Stashed changes
     //load parameters used by dispatch algorithm
     //-------------------------------    
     
@@ -927,6 +931,22 @@ void C_csp_solver::Ssimulate(C_csp_solver::S_sim_setup & sim_setup)
 
                 //disp_etapb_expect = dispatch.outputs.eta_pb_expected.at( dispatch.m_current_read_step ) 
                 //                    /** m_cycle_eta_des*/ * ( dispatch.outputs.pb_operation.at( dispatch.m_current_read_step ) ? 1. : 0. );
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+                disp_etasf_expect = dispatch.outputs.eta_sf_expected.at( dispatch.m_current_read_step );
+                disp_qsf_expect = dispatch.outputs.q_sfavail_expected.at( dispatch.m_current_read_step )*1.e-3;
+                disp_qsfprod_expect = dispatch.outputs.q_sf_expected.at( dispatch.m_current_read_step )*1.e-3;
+                disp_qsfsu_expect = dispatch.outputs.q_rec_startup.at( dispatch.m_current_read_step )*1.e-3;
+                disp_tes_expect = dispatch.outputs.tes_charge_expected.at( dispatch.m_current_read_step )*1.e-3;
+                disp_qpbsu_expect = dispatch.outputs.q_pb_startup.at( dispatch.m_current_read_step )*1.e-3;
+                //disp_wpb_expect = dispatch.outputs.q_pb_target.at(dispatch.m_current_read_step ) * disp_etapb_expect *1.e-3;  
+                disp_wpb_expect = dispatch.outputs.w_pb_target.at( dispatch.m_current_read_step )*1.e-3;
+                disp_rev_expect = disp_wpb_expect * dispatch.price_signal.at( dispatch.m_current_read_step );
+                disp_etapb_expect = disp_wpb_expect / std::max(1.e-6, dispatch.outputs.q_pb_target.at( dispatch.m_current_read_step ))* 1.e3 
+                                        * ( dispatch.outputs.pb_operation.at( dispatch.m_current_read_step ) ? 1. : 0. );
+=======
+>>>>>>> Stashed changes
                 disp_etasf_expect = dispatch->outputs.eta_sf_expected.at( dispatch->m_current_read_step );
                 disp_qsf_expect = dispatch->outputs.q_sfavail_expected.at( dispatch->m_current_read_step )*1.e-3;
                 disp_qsfprod_expect = dispatch->outputs.q_sf_expected.at( dispatch->m_current_read_step )*1.e-3;
@@ -936,8 +956,14 @@ void C_csp_solver::Ssimulate(C_csp_solver::S_sim_setup & sim_setup)
                 //disp_wpb_expect = dispatch->outputs.q_pb_target.at(dispatch->m_current_read_step ) * disp_etapb_expect *1.e-3;  
                 disp_wpb_expect = dispatch->outputs.w_pb_target.at( dispatch->m_current_read_step )*1.e-3;
                 disp_rev_expect = disp_wpb_expect * dispatch->params.price_signal.at( dispatch->m_current_read_step );
+<<<<<<< Updated upstream
                 disp_etapb_expect = disp_wpb_expect / std::max(1.e-6, dispatch->outputs.q_pb_target.at( dispatch->m_current_read_step ))* 1.e3 
                                         * ( dispatch->outputs.pb_operation.at( dispatch->m_current_read_step ) ? 1. : 0. );
+=======
+                disp_etapb_expect = disp_wpb_expect / max(1.e-6, dispatch->outputs.q_pb_target.at( dispatch->m_current_read_step ))* 1.e3 
+                                        * ( dispatch->outputs.pb_operation.at( dispatch->m_current_read_step ) ? 1. : 0. );
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
                 //if( is_sim_timestep_complete ) // disp_time_last != mc_kernel.mc_sim_info.ms_ts.ms_ts.m_time)
                 //    dispatch.m_current_read_step++;

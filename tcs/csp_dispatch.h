@@ -1,9 +1,34 @@
+<<<<<<< Updated upstream
+=======
+#define NOMINMAX
+>>>>>>> Stashed changes
 
 #include <vector>
 #include <string>
+<<<<<<< Updated upstream
 
 #pragma warning(disable: 4290)  // ignore warning: 'C++ exception specification ignored except to indicate a function is not __declspec(nothrow)'
 
+<<<<<<< Updated upstream
+=======
+class C_csp_weatherreader;
+class C_csp_solver_sim_info;     //Pointer to existing simulation info object
+class C_csp_collector_receiver;   //Pointer to collector/receiver object
+class C_csp_messages;   //Pointer to message structure
+=======
+
+#include <unordered_map>
+using std::unordered_map;
+
+#pragma warning(disable: 4290)  // ignore warning: 'C++ exception specification ignored except to indicate a function is not __declspec(nothrow)'
+
+//#include "lib_util.h"
+//#include "glpk\src\glpk.h"
+>>>>>>> Stashed changes
+
+//using namespace std;
+
+>>>>>>> Stashed changes
 #ifndef _CSP_DISPATCH
 #define _CSP_DISPATCH
 
@@ -12,21 +37,33 @@ class C_csp_solver_sim_info;
 class C_csp_collector_receiver;   
 class C_csp_messages;  
 
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 class csp_dispatch_opt
 {
     bool m_is_weather_setup;  //bool indicating whether the weather has been copied
     
     void clear_output_arrays();
 
+<<<<<<< Updated upstream
     double locate(std::vector<double> &data, int t);
+=======
+    double locate(vector<double> &data, int t);
+>>>>>>> Stashed changes
 
 public:
     bool m_last_opt_successful;   //last optimization run was successful?
     int m_current_read_step;        //current step to read from optimization results
+<<<<<<< Updated upstream
     std::vector<double> price_signal;    //IN [- or $/MWh] Price factor indicating market value of generated energy
 	std::vector<double> w_lim;			//[kWe] Limit on net electricity production
     C_csp_weatherreader *m_weather;       //Local copy of weather reader object
 
+=======
+    C_csp_weatherreader *m_weather;       //Local copy of weather reader object
+>>>>>>> Stashed changes
 
     struct s_solver_params
     {
@@ -34,10 +71,20 @@ public:
         bool is_stochastic_dispatch; //Use stochastic dispatch methods
         int  nstep_opt;              //number of time steps in the optimized array
         int iter_count;             //branch and bound iteration count
+<<<<<<< Updated upstream
         int disp_steps_per_hour;    //number of time steps per hour for the dispatch optimization run
         int data_steps_per_hour;    //number of time steps per hour for the array inputs
         int index0;                 //index at which reading should begin for this run
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
         std::string log_message;
+=======
+        int disp_steps_per_hour;    //number of time steps per hour for the dispatch optimization run
+        int data_steps_per_hour;    //number of time steps per hour for the array inputs
+        int index0;                 //index at which reading should begin for this run
+        string log_message;
+>>>>>>> Stashed changes
         double obj_relaxed;
 
         //user settings
@@ -111,8 +158,13 @@ public:
 		double w_cycle_standby;		//[kWe] Cycle HTF pumping power during standby
 		double w_cycle_pump;		//[kWe/kWt] Cycle HTF pumping power per thermal energy consumed
 
+<<<<<<< Updated upstream
         std::vector<double> price_signal;    //IN [- or $/MWh] Price factor indicating market value of generated energy
     	std::vector<double> w_lim;			//[kWe] Limit on net electricity production
+=======
+        vector<double> price_signal;    //IN [- or $/MWh] Price factor indicating market value of generated energy
+    	vector<double> w_lim;			//[kWe] Limit on net electricity production
+>>>>>>> Stashed changes
 
         /*util::matrix_t<double> fc_dni_scenarios;
         util::matrix_t<double> fc_price_scenarios;
@@ -288,4 +340,12 @@ public:
 // ----------------------------------------
 
 
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+
+
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 #endif

@@ -7,7 +7,7 @@
 #include "csp_dispatch.h"
 #include "csp_solver_core.h"
 #include "lp_lib.h" 
-#include "lib_util.h"
+//#include "lib_util.h"
 
 //#define _WRITE_AMPL_DATA 1
 #define SOS_NONE
@@ -61,6 +61,66 @@ void __WINAPI opt_iter_function(lprec *lp, void *userhandle, int msg)
         par->is_abort_flag = true;
 }
 
+<<<<<<< Updated upstream
+=======
+class optimization_vars
+{
+    int current_mem_pos;
+    int alloc_mem_size; 
+
+    REAL *data;
+public:
+    struct opt_var
+    {
+        string name;
+        int var_type;
+        int var_dim;
+        int var_dim_size;
+        int var_dim_size2;
+        int ind_start;
+        int ind_end;
+        REAL upper_bound;
+        REAL lower_bound;
+    };
+private: 
+    vector<opt_var> var_objects;
+
+    unordered_map<string, opt_var*> var_by_name;
+
+public:
+    struct VAR_TYPE { enum A {REAL_T, INT_T, BINARY_T}; };
+    struct VAR_DIM { enum A {DIM_T, DIM_NT, DIM_T2, DIM_2T_TRI}; };
+
+    optimization_vars();
+    //~optimization_vars();
+
+    void add_var(char *vname, int var_type /* VAR_TYPE enum */, int var_dim /* VAR_DIM enum */, int var_dim_size, REAL lowbo=-DEF_INFINITE, REAL upbo=DEF_INFINITE);
+    void add_var(char *vname, int var_type /* VAR_TYPE enum */, int var_dim /* VAR_DIM enum */, int var_dim_size, int var_dim_size2, REAL lowbo=-DEF_INFINITE, REAL upbo=DEF_INFINITE);
+
+    bool construct();
+
+    int get_num_varobjs();
+    int get_total_var_count();
+
+    REAL &operator()(char *varname, int ind);    //Access for 1D var
+    REAL &operator()(char *varname, int ind1, int ind2);     //Access for 2D var
+    REAL &operator()(int varindex, int ind);    
+    REAL &operator()(int varindex, int ind1, int ind2);
+
+    int column(char *varname, int ind);
+    int column(char *varname, int ind1, int ind2);
+    int column(int varindex, int ind);
+    int column(int varindex, int ind1, int ind2);
+
+    REAL *get_variable_array(); 
+
+    opt_var *get_var(char *varname);
+    opt_var *get_var(int varindex);
+};
+
+
+
+>>>>>>> Stashed changes
 class optimization_vars
 {
     int current_mem_pos;
@@ -127,7 +187,11 @@ csp_dispatch_opt::csp_dispatch_opt()
     m_last_opt_successful = false;
     clear_output_arrays();
     m_is_weather_setup = false;
+<<<<<<< Updated upstream
     m_weather = 0;
+=======
+    m_weather = new C_csp_weatherreader();  //allocate
+>>>>>>> Stashed changes
 
     //parameters
     params.is_pb_operating0 = false;
@@ -155,14 +219,26 @@ csp_dispatch_opt::csp_dispatch_opt()
     params.col_rec = 0;
     params.sf_effadj = 1.;
     params.info_time = 0.;
+<<<<<<< Updated upstream
     params.eta_cycle_ref = std::numeric_limits<double>::quiet_NaN();
     params.disp_time_weighting = std::numeric_limits<double>::quiet_NaN();
     params.rsu_cost = params.csu_cost = params.pen_delta_w = params.q_rec_standby = std::numeric_limits<double>::quiet_NaN();
+<<<<<<< Updated upstream
+=======
+=======
+    params.eta_cycle_ref = numeric_limits<double>::quiet_NaN();
+    params.disp_time_weighting = numeric_limits<double>::quiet_NaN();
+    params.rsu_cost = params.csu_cost = params.pen_delta_w = params.q_rec_standby = numeric_limits<double>::quiet_NaN();
+>>>>>>> Stashed changes
     params.price_signal.clear();
     params.w_lim.clear();
     /*params.fc_dni_scenarios.clear();
     params.fc_price_scenarios.clear();
     params.fc_tdry_scenarios.clear();*/
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
     
     outputs.objective = 0.;
     outputs.objective_relaxed = 0.;
@@ -207,7 +283,11 @@ void csp_dispatch_opt::clear_output_arrays()
     outputs.delta_rs.clear();
 }
 
+<<<<<<< Updated upstream
 double csp_dispatch_opt::locate(std::vector<double> &data, int t)
+=======
+double csp_dispatch_opt::locate(vector<double> &data, int t)
+>>>>>>> Stashed changes
 {
     /* 
     Use knowledge of the starting index0, current index 't', and relationship between input 
@@ -246,7 +326,11 @@ bool csp_dispatch_opt::check_setup(int nstep)
 bool csp_dispatch_opt::copy_weather_data(C_csp_weatherreader &weather_source)
 {
     //Copy the weather data
+<<<<<<< Updated upstream
     m_weather = new C_csp_weatherreader( weather_source );
+=======
+    *m_weather = weather_source;
+>>>>>>> Stashed changes
 
     return m_is_weather_setup = true;
 }
