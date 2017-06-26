@@ -762,23 +762,7 @@ public:
 		tou_params->mc_pricing.mc_weekdays = as_matrix("dispatch_sched_weekday");
 		tou_params->mc_pricing.mc_weekends = as_matrix("dispatch_sched_weekend");
 		tou.mc_dispatch_params.m_dispatch_optimize = false;
-		tou.mc_dispatch_params.m_is_write_ampl_dat = false;
-		tou.mc_dispatch_params.m_is_ampl_engine = false;
-		tou.mc_dispatch_params.m_ampl_data_dir = "";
-		tou.mc_dispatch_params.m_ampl_exec_call = "";
-		if( tou.mc_dispatch_params.m_dispatch_optimize )
-		{
-			tou.mc_dispatch_params.m_optimize_frequency = as_integer("disp_frequency");
-			tou.mc_dispatch_params.m_optimize_horizon = as_integer("disp_horizon");
-			tou.mc_dispatch_params.m_max_iterations = as_integer("disp_max_iter");
-			tou.mc_dispatch_params.m_solver_timeout = as_double("disp_timeout");
-			tou.mc_dispatch_params.m_mip_gap = as_double("disp_mip_gap");
-			tou.mc_dispatch_params.m_presolve_type = as_integer("disp_spec_presolve");
-			tou.mc_dispatch_params.m_bb_type = as_integer("disp_spec_bb");
-			tou.mc_dispatch_params.m_disp_reporting = as_integer("disp_reporting");
-			tou.mc_dispatch_params.m_scaling_type = as_integer("disp_spec_scaling");
-		}
-		tou.mc_dispatch_params.m_is_block_dispatch = !tou.mc_dispatch_params.m_dispatch_optimize;      //mw
+		
 		tou.mc_dispatch_params.m_use_rule_1 = true;
 		tou.mc_dispatch_params.m_standby_off_buffer = 2.0;
 		tou.mc_dispatch_params.m_use_rule_2 = false;

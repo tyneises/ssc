@@ -1,24 +1,24 @@
+
 #include <vector>
 #include <string>
 
 #pragma warning(disable: 4290)  // ignore warning: 'C++ exception specification ignored except to indicate a function is not __declspec(nothrow)'
 
-class C_csp_weatherreader;
-class C_csp_solver_sim_info;     //Pointer to existing simulation info object
-class C_csp_collector_receiver;   //Pointer to collector/receiver object
-class C_csp_messages;   //Pointer to message structure
-
-//using namespace std;
-
 #ifndef _CSP_DISPATCH
 #define _CSP_DISPATCH
 
+class C_csp_weatherreader;
+class C_csp_solver_sim_info;     
+class C_csp_collector_receiver;   
+class C_csp_messages;  
+
 class csp_dispatch_opt
 {
-    int  m_nstep_opt;              //number of time steps in the optimized array
     bool m_is_weather_setup;  //bool indicating whether the weather has been copied
     
     void clear_output_arrays();
+
+    double locate(std::vector<double> &data, int t);
 
 public:
     bool m_last_opt_successful;   //last optimization run was successful?
@@ -31,7 +31,12 @@ public:
     struct s_solver_params
     {
         bool is_abort_flag;         //optimization flagged for abort
+        bool is_stochastic_dispatch; //Use stochastic dispatch methods
+        int  nstep_opt;              //number of time steps in the optimized array
         int iter_count;             //branch and bound iteration count
+        int disp_steps_per_hour;    //number of time steps per hour for the dispatch optimization run
+        int data_steps_per_hour;    //number of time steps per hour for the array inputs
+        int index0;                 //index at which reading should begin for this run
         std::string log_message;
         double obj_relaxed;
 
@@ -39,6 +44,7 @@ public:
         int max_bb_iter;            //Maximum allowable iterations for B&B algorithm
         double mip_gap;             //convergence tolerance - gap between relaxed MIP solution and current best solution
         double solution_timeout;    //[s] Max solve time for each solution
+        double disp_time_weighting;
         int presolve_type;
         int bb_type;  
         int disp_reporting;
@@ -104,6 +110,13 @@ public:
 		double w_stow;				//[kWe-hr] Heliostat stow electricity requirement
 		double w_cycle_standby;		//[kWe] Cycle HTF pumping power during standby
 		double w_cycle_pump;		//[kWe/kWt] Cycle HTF pumping power per thermal energy consumed
+
+        std::vector<double> price_signal;    //IN [- or $/MWh] Price factor indicating market value of generated energy
+    	std::vector<double> w_lim;			//[kWe] Limit on net electricity production
+
+        /*util::matrix_t<double> fc_dni_scenarios;
+        util::matrix_t<double> fc_price_scenarios;
+        util::matrix_t<double> fc_tdry_scenarios;*/
 
         C_csp_solver_sim_info *siminfo;     //Pointer to existing simulation info object
         C_csp_collector_receiver *col_rec;   //Pointer to collector/receiver object
@@ -273,8 +286,6 @@ public:
 };
 
 // ----------------------------------------
-
-
 
 
 #endif

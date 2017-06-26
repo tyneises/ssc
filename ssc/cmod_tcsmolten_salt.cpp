@@ -1356,31 +1356,31 @@ public:
 		tou_params->mc_pricing.mc_weekdays = as_matrix("dispatch_sched_weekday");
 		tou_params->mc_pricing.mc_weekends = as_matrix("dispatch_sched_weekend");
         tou.mc_dispatch_params.m_dispatch_optimize = as_boolean("is_dispatch");
-        tou.mc_dispatch_params.m_is_write_ampl_dat = as_boolean("is_write_ampl_dat");
-        tou.mc_dispatch_params.m_is_ampl_engine = as_boolean("is_ampl_engine");
-        tou.mc_dispatch_params.m_ampl_data_dir = as_string("ampl_data_dir");
-        tou.mc_dispatch_params.m_ampl_exec_call = as_string("ampl_exec_call");
+        tou.dispatch.solver_params.is_write_ampl_dat = as_boolean("is_write_ampl_dat");
+        tou.dispatch.solver_params.is_ampl_engine = as_boolean("is_ampl_engine");
+        tou.dispatch.solver_params.ampl_data_dir = as_string("ampl_data_dir");
+        tou.dispatch.solver_params.ampl_exec_call = as_string("ampl_exec_call");
 		if( tou.mc_dispatch_params.m_dispatch_optimize )
 		{
 			tou.mc_dispatch_params.m_optimize_frequency = as_integer("disp_frequency");
-            tou.mc_dispatch_params.m_disp_steps_per_hour = as_integer("disp_steps_per_hour");
-			tou.mc_dispatch_params.m_optimize_horizon = as_integer("disp_horizon");
-			tou.mc_dispatch_params.m_max_iterations = as_integer("disp_max_iter");
-			tou.mc_dispatch_params.m_solver_timeout = as_double("disp_timeout");
-			tou.mc_dispatch_params.m_mip_gap = as_double("disp_mip_gap");
-			tou.mc_dispatch_params.m_presolve_type = as_integer("disp_spec_presolve");
-			tou.mc_dispatch_params.m_bb_type = as_integer("disp_spec_bb");
-			tou.mc_dispatch_params.m_disp_reporting = as_integer("disp_reporting");
-			tou.mc_dispatch_params.m_scaling_type = as_integer("disp_spec_scaling");
-			tou.mc_dispatch_params.m_disp_time_weighting = as_double("disp_time_weighting");
-            tou.mc_dispatch_params.m_rsu_cost = as_double("disp_rsu_cost");
-            tou.mc_dispatch_params.m_csu_cost = as_double("disp_csu_cost");
-            tou.mc_dispatch_params.m_pen_delta_w = as_double("disp_pen_delta_w");
-            tou.mc_dispatch_params.m_q_rec_standby = as_double("q_rec_standby");
-			tou.mc_dispatch_params.m_w_rec_ht = as_double("q_rec_heattrace");
-            tou.mc_dispatch_params.m_is_stochastic_dispatch = as_boolean("is_stochastic_dispatch");
+            tou.dispatch.solver_params.disp_steps_per_hour = as_integer("disp_steps_per_hour");
+			tou.dispatch.solver_params.nstep_opt = as_integer("disp_horizon");
+			tou.dispatch.solver_params.max_bb_iter = as_integer("disp_max_iter");
+			tou.dispatch.solver_params.solution_timeout = as_double("disp_timeout");
+			tou.dispatch.solver_params.mip_gap = as_double("disp_mip_gap");
+			tou.dispatch.solver_params.presolve_type = as_integer("disp_spec_presolve");
+			tou.dispatch.solver_params.bb_type = as_integer("disp_spec_bb");
+			tou.dispatch.solver_params.disp_reporting = as_integer("disp_reporting");
+			tou.dispatch.solver_params.scaling_type = as_integer("disp_spec_scaling");
+			tou.dispatch.solver_params.disp_time_weighting = as_double("disp_time_weighting");
+            tou.dispatch.solver_params.is_stochastic_dispatch = as_boolean("is_stochastic_dispatch");
+            tou.dispatch.params.rsu_cost = as_double("disp_rsu_cost");
+            tou.dispatch.params.csu_cost = as_double("disp_csu_cost");
+            tou.dispatch.params.pen_delta_w = as_double("disp_pen_delta_w");
+            tou.dispatch.params.q_rec_standby = as_double("q_rec_standby");
+			tou.dispatch.params.w_rec_ht = as_double("q_rec_heattrace");
 
-			if (as_boolean("is_wlim_series"))
+			/*if (as_boolean("is_wlim_series"))
 			{
 				size_t n_wlim_series = -1;
 				ssc_number_t* wlim_series = as_array("wlim_series", &n_wlim_series);
@@ -1388,23 +1388,22 @@ public:
 					throw exec_error("tcsmolten_salt", "Invalid net electricity generation limit series dimension. Matrix must have "+util::to_string(n_steps_full)+" rows.");
 				for (int i = 0; i < n_steps_full; i++)
 					tou.mc_dispatch_params.m_w_lim_full.at(i) = (double)wlim_series[i];
-			}
+			}*/
 
-            if( tou.mc_dispatch_params.m_is_stochastic_dispatch )
+            if( tou.dispatch.solver_params.is_stochastic_dispatch )
             {
-                if(! tou.mc_dispatch_params.m_is_ampl_engine )
+                if(! tou.dispatch.solver_params.is_ampl_engine )
                     throw exec_error("tcsmolten_salt", "Stochastic dispatch is only available using the AMPL engine linkage. Ensure AMPL settings are correct.");
 
                 //construct the stochastic forecast data tables
-                tou.mc_dispatch_params.m_fc_dni_scenarios = as_matrix("fc_dni_scenarios");
-                tou.mc_dispatch_params.m_fc_price_scenarios = as_matrix("fc_price_scenarios");
-                tou.mc_dispatch_params.m_fc_tdry_scenarios = as_matrix("fc_tdry_scenarios");
-                tou.mc_dispatch_params.m_fc_steps = as_integer("fc_steps");
+                /*tou.dispatch.params.fc_dni_scenarios = as_matrix("fc_dni_scenarios");
+                tou.dispatch.params.fc_price_scenarios = as_matrix("fc_price_scenarios");
+                tou.dispatch.params.fc_tdry_scenarios = as_matrix("fc_tdry_scenarios");*/
             }
 
 	
 		}
-		tou.mc_dispatch_params.m_is_block_dispatch = ! tou.mc_dispatch_params.m_dispatch_optimize;      //mw
+		//tou.mc_dispatch_params.m_is_block_dispatch = ! tou.mc_dispatch_params.m_dispatch_optimize;      //mw
 		tou.mc_dispatch_params.m_use_rule_1 = true;
 		tou.mc_dispatch_params.m_standby_off_buffer = 2.0;
 		tou.mc_dispatch_params.m_use_rule_2 = false;

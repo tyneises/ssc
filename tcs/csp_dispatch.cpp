@@ -1,3 +1,5 @@
+#define NOMINMAX
+
 #include <fstream>
 #include <sstream>
 #include <stdlib.h>
@@ -59,7 +61,6 @@ void __WINAPI opt_iter_function(lprec *lp, void *userhandle, int msg)
         par->is_abort_flag = true;
 }
 
-
 class optimization_vars
 {
     int current_mem_pos;
@@ -116,21 +117,14 @@ public:
 };
 
 
-csp_dispatch_opt::~csp_dispatch_opt()
-{
-    if( m_weather )
-        delete m_weather;
-}
-
 
 csp_dispatch_opt::csp_dispatch_opt()
 {
 
     //initialize member data
-    m_nstep_opt = 0;
+    solver_params.nstep_opt = 0;
     m_current_read_step = 0;
     m_last_opt_successful = false;
-    price_signal.clear();
     clear_output_arrays();
     m_is_weather_setup = false;
     m_weather = 0;
@@ -164,6 +158,11 @@ csp_dispatch_opt::csp_dispatch_opt()
     params.eta_cycle_ref = std::numeric_limits<double>::quiet_NaN();
     params.disp_time_weighting = std::numeric_limits<double>::quiet_NaN();
     params.rsu_cost = params.csu_cost = params.pen_delta_w = params.q_rec_standby = std::numeric_limits<double>::quiet_NaN();
+    params.price_signal.clear();
+    params.w_lim.clear();
+    /*params.fc_dni_scenarios.clear();
+    params.fc_price_scenarios.clear();
+    params.fc_tdry_scenarios.clear();*/
     
     outputs.objective = 0.;
     outputs.objective_relaxed = 0.;
@@ -173,6 +172,13 @@ csp_dispatch_opt::csp_dispatch_opt()
     outputs.presolve_nconstr = 0;
     outputs.solve_time = 0.;
     outputs.presolve_nvar = 0;
+
+}
+
+csp_dispatch_opt::~csp_dispatch_opt()
+{
+    if( m_weather )
+        delete m_weather;
 
 }
 
@@ -201,12 +207,35 @@ void csp_dispatch_opt::clear_output_arrays()
     outputs.delta_rs.clear();
 }
 
+double csp_dispatch_opt::locate(std::vector<double> &data, int t)
+{
+    /* 
+    Use knowledge of the starting index0, current index 't', and relationship between input 
+    array dimensions and optimization problem dimensions to return the correct data
+    from indexed parameters. If there are more data points than dispatch steps, take the 
+    average.
+
+    the index 't' is provided in the context of the dispatch time dimension.
+    */
+    
+    int disp_steps_per_data_step = solver_params.data_steps_per_hour / solver_params.disp_steps_per_hour;
+
+    double val = 0.;
+    for(int i=0; i<disp_steps_per_data_step; i++)
+        val += data.at( solver_params.index0 + t*disp_steps_per_data_step + i );
+
+    val /= (double)disp_steps_per_data_step;
+
+    return val;
+
+}
+
 bool csp_dispatch_opt::check_setup(int nstep)
 {
     //check parameters and inputs to make sure everything has been set up correctly
     bool ok = true;
 
-    if( price_signal.size() < nstep )   return false;
+    if( params.price_signal.size() < nstep )   return false;
 
     if( !m_is_weather_setup ) return false;
     if( params.siminfo == 0 ) return false;
@@ -227,12 +256,12 @@ bool csp_dispatch_opt::predict_performance(int step_start, int ntimeints, int di
     //Step number - 1-based index for first hour of the year.
 
     //save step count
-    m_nstep_opt = ntimeints;
+    solver_params.nstep_opt = ntimeints;
 
     //Predict performance out nstep values. 
     clear_output_arrays();
 
-    if(! check_setup(m_nstep_opt) )
+    if(! check_setup(solver_params.nstep_opt) )
         throw C_csp_exception("Dispatch optimization precheck failed.");
 
     //create the sim info
@@ -244,7 +273,7 @@ bool csp_dispatch_opt::predict_performance(int step_start, int ntimeints, int di
 
     double ave_weight = 1./(double)divs_per_int;
 
-    for(int i=0; i<m_nstep_opt; i++)
+    for(int i=0; i<solver_params.nstep_opt; i++)
     {
         //initialize hourly average values
         double therm_eff_ave = 0.;
@@ -429,7 +458,7 @@ static void calculate_parameters(csp_dispatch_opt *optinst, unordered_map<std::s
             optinst->outputs.wnet_lim_min.at(t) =  wmin - max_parasitic;
             if( t < nt-1 )
             {
-                double delta_rec_startup = min(1., max(optinst->params.e_rec_startup / max(optinst->outputs.q_sfavail_expected.at(t + 1)*pars["delta"], 1.), optinst->params.dt_rec_startup / pars["delta"]));
+                double delta_rec_startup = std::min(1., std::max(optinst->params.e_rec_startup / std::max(optinst->outputs.q_sfavail_expected.at(t + 1)*pars["delta"], 1.), optinst->params.dt_rec_startup / pars["delta"]));
                 optinst->outputs.delta_rs.at(t) = delta_rec_startup;
             }
         }
@@ -489,7 +518,7 @@ bool csp_dispatch_opt::optimize()
     try{
 
         //Calculate the number of variables
-        int nt = (int)m_nstep_opt;
+        int nt = (int)solver_params.nstep_opt;
         int nz = (int)params.eff_table_load.get_size();
 
         //set up the variable structure
@@ -586,37 +615,38 @@ bool csp_dispatch_opt::optimize()
 
             //calculate the mean price to appropriately weight the receiver production timing derate
             double pmean =0;
-            for(int t=0; t<price_signal.size(); t++)
-                pmean += price_signal.at(t);
-            pmean /= (double)price_signal.size();
+            for(int t=solver_params.index0; t<solver_params.index0 + solver_params.nstep_opt; t++)
+                pmean += params.price_signal.at(t);
+            pmean /= (double)params.price_signal.size();
             //--
             
             for(int t=0; t<nt; t++)
             {
+                double price_t = locate( params.price_signal, t );
                 i = 0;
                 col[ t + nt*(i  ) ] = O.column("wdot", t);
-                row[ t + nt*(i++) ] = P["delta"] * price_signal.at(t)*tadj*(1.-outputs.w_condf_expected.at(t));
+                row[ t + nt*(i++) ] = P["delta"] * price_t*tadj*(1.-outputs.w_condf_expected.at(t));
 
                 col[ t + nt*(i  ) ] = O.column("xr", t);
-                row[ t + nt*(i++) ] = -(P["delta"] * price_signal.at(t) * P["Lr"])+tadj*pmean;  // tadj added to prefer receiver production sooner (i.e. delay dumping)
+                row[ t + nt*(i++) ] = -(P["delta"] * price_t * P["Lr"])+tadj*pmean;  // tadj added to prefer receiver production sooner (i.e. delay dumping)
 
                 col[ t + nt*(i  ) ] = O.column("xrsu", t);
-                row[ t + nt*(i++) ] = -P["delta"] * price_signal.at(t) * P["Lr"];
+                row[ t + nt*(i++) ] = -P["delta"] * price_t * P["Lr"];
 
                 col[ t + nt*(i  ) ] = O.column("yrsu", t);
-                row[ t + nt*(i++) ] = -price_signal.at(t) * (params.w_rec_ht + params.w_stow);
+                row[ t + nt*(i++) ] = -price_t * (params.w_rec_ht + params.w_stow);
 
                 col[ t + nt*(i  ) ] = O.column("yr", t);
-                row[ t + nt*(i++) ] = -(P["delta"] * price_signal.at(t) * params.w_track) + tadj;	// tadj added to prefer receiver operation in nearer term to longer term
+                row[ t + nt*(i++) ] = -(P["delta"] * price_t * params.w_track) + tadj;	// tadj added to prefer receiver operation in nearer term to longer term
 
                 col[ t + nt*(i  ) ] = O.column("x", t);
-                row[ t + nt*(i++) ] = -P["delta"] * price_signal.at(t) * params.w_cycle_pump;
+                row[ t + nt*(i++) ] = -P["delta"] * price_t * params.w_cycle_pump;
 
                 col[ t + nt*(i  ) ] = O.column("ycsb", t);
-                row[ t + nt*(i++) ] = -P["delta"] * price_signal.at(t) * params.w_cycle_standby;
+                row[ t + nt*(i++) ] = -P["delta"] * price_t * params.w_cycle_standby;
 
                 //xxcol[ t + nt*(i   ] = O.column("yrsb", t);
-                //xxrow[ t + nt*(i++) ] = -delta * price_signal.at(t) * (Lr * Qrl + (params.w_stow / delta));
+                //xxrow[ t + nt*(i++) ] = -delta * price_t * (Lr * Qrl + (params.w_stow / delta));
 
                 //xxcol[ t + nt*(i   ] = O.column("yrsd", t);
                 //xxrow[ t + nt*(i++) ] = -0.5 - (params.w_stow);
@@ -836,7 +866,7 @@ bool csp_dispatch_opt::optimize()
                 row[0] = 1.;
                 col[0] = O.column("yrsu", t);
 
-                add_constraintex(lp, 1, row, col, LE, min(P["M"]*outputs.q_sfavail_expected.at(t), 1.0) );
+                add_constraintex(lp, 1, row, col, LE, std::min(P["M"]*outputs.q_sfavail_expected.at(t), 1.0) );
 
                 //Receiver consumption limit
                 row[0] = 1.;
@@ -869,7 +899,7 @@ bool csp_dispatch_opt::optimize()
                 row[0] = 1.;
                 col[0] = O.column("yr", t);
 
-                add_constraintex(lp, 1, row, col, LE, min(P["M"]*outputs.q_sfavail_expected.at(t), 1.0) );  //if any measurable energy, y^r can be 1
+                add_constraintex(lp, 1, row, col, LE, std::min(P["M"]*outputs.q_sfavail_expected.at(t), 1.0) );  //if any measurable energy, y^r can be 1
 
                 // --- new constraints ---
 
@@ -1241,31 +1271,17 @@ bool csp_dispatch_opt::optimize()
 
 			for (int t = 0; t<nt; t++)
 			{
-				//// Adjust wlim if specified value is too low to permit cycle operation
-				//double wmin = (P["Ql"] * P["etap"]*outputs.eta_pb_expected.at(t) / params.eta_cycle_ref) + (P["Wdotu"] - P["etap"]*P["Qu"])*outputs.eta_pb_expected.at(t) / params.eta_cycle_ref; // Electricity generation at minimum pb thermal input
-				//double max_parasitic = 
-    //                  P["Lr"] * outputs.q_sfavail_expected.at(t) 
-    //                + (params.w_rec_ht / params.dt) 
-    //                + (params.w_stow / params.dt) 
-    //                + params.w_track 
-    //                + params.w_cycle_standby 
-    //                + params.w_cycle_pump*P["Qu"]
-    //                + outputs.w_condf_expected.at(t)*P["W_dot_cycle"];  // Largest possible parasitic load at time t
-
-    //            //save for writing to ampl
-    //            outputs.wnet_lim_min.push_back( wmin - max_parasitic );
-                
                 //check if cycle should be able to operate
-				//if (wmin - max_parasitic > w_lim.at(t))		// power cycle operation is impossible at t
-                if( outputs.wnet_lim_min.at(t) > w_lim.at(t) )
+                double w_lim_now = locate( params.w_lim, t);
+                if( outputs.wnet_lim_min.at(t) > w_lim_now )  // power cycle operation is impossible at t
                 {
-                    if(w_lim.at(t) > 0)
+                    if(w_lim_now > 0)
                         params.messages->add_message(C_csp_messages::NOTICE, "Power cycle operation not possible at time "+ util::to_string(t+1) + ": power limit below minimum operation");                    
-                    w_lim.at(t) = 0.;
+                    w_lim_now = 0.;
                     
                 }
 
-				if (w_lim.at(t) > 0.)	// Power cycle operation is possible
+				if (w_lim_now > 0.)	// Power cycle operation is possible
 				{
 					int i = 0;
 
@@ -1295,7 +1311,7 @@ bool csp_dispatch_opt::optimize()
 					//row[i] - params.w_stow / params.dt;	//kWe
 					//col[i++] = O.column("yrsd", t);
 
-					add_constraintex(lp, 7, row, col, LE, w_lim.at(t));
+					add_constraintex(lp, 7, row, col, LE, locate( params.w_lim, t ));
 				}
 				else // Power cycle operation is impossible at current constrained wlim
 				{
@@ -1720,7 +1736,7 @@ std::string csp_dispatch_opt::write_ampl()
 
         std::ofstream fout(outname.str().c_str());
 
-        int nt = m_nstep_opt;
+        int nt = solver_params.nstep_opt;
 
         unordered_map<std::string, double> pars;
         calculate_parameters(this, pars, nt);
@@ -1751,7 +1767,7 @@ std::string csp_dispatch_opt::write_ampl()
 
         fout << "param P := \n";
         for(int t=0; t<nt; t++)
-            fout << t+1 << "\t" << price_signal.at(t) << "\n";
+            fout << t+1 << "\t" << locate(params.price_signal, t) << "\n";
         fout << ";\n\n";
 
         fout << "param etaamb := \n";   //power block ambient adjustment
@@ -1762,7 +1778,7 @@ std::string csp_dispatch_opt::write_ampl()
         //net power limit
         fout << "param Wdotnet := \n";
         for(int t=0; t<nt; t++)
-            fout << t+1 << "\t" << w_lim.at(t) << "\n";
+            fout << t+1 << "\t" << locate( params.w_lim, t ) << "\n";
         fout << ";\n\n";
         
         //condenser parasitic loss coefficient
@@ -1863,7 +1879,7 @@ bool csp_dispatch_opt::optimize_ampl()
     Each item will be on it's own line. Values in arrays are separated by commas.
     */
     
-    int nt = m_nstep_opt;
+    int nt = solver_params.nstep_opt;
 
     outputs.pb_standby.resize(nt, false);
     outputs.pb_operation.resize(nt, false);
