@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\test\lib_battery_test.cpp" />
+    <ClCompile Include="..\test\lib_weatherfile_test.cpp" />
     <ClCompile Include="..\test\main.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -74,6 +75,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -108,14 +110,14 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SSCDIR)\test;$(GTEST)\include;$(SSCDIR);$(SSCDIR)\lpsolve;$(SSCDIR)\shared;$(SSCDIR)\tcs;$(SSCDIR)\solarpilot;$(SSCDIR)\ssc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SSCDIR)\test;$(GTEST)\include;$(SSCDIR);$(SSCDIR)\lpsolve;$(SSCDIR)\shared;$(SSCDIR)\tcs;$(SSCDIR)\solarpilot;$(SSCDIR)\ssc;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(SolutionDir)\$(Platform)\$(Configuration)\;$(GTEST)\msvc\2010\gtest-md\$(Platform)-$(Configuration)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>gtest.lib;%(AdditionalDependencies); ssc.lib; shared.lib; tcs.lib; tcsconsole.lib; solarpilot.lib; lpsolve.lib; nlopt.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(GTEST)\msvc\2010\gtest-md\$(Platform)-$(Configuration);$(SSCDIR)\build_vc2013\$(Platform)\$(Configuration);</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;gtest.lib;shared.lib;lpsolve.lib;solarpilot.lib;nlopt.lib;tcs.lib;ssc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
