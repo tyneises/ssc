@@ -55,7 +55,7 @@
 
 SSCEXPORT int ssc_version()
 {
-	return 180;
+	return 182;
 }
 
 SSCEXPORT const char *ssc_build_info()
@@ -102,6 +102,7 @@ extern module_entry_info
 	cm_entry_equpartflip,
 	cm_entry_saleleaseback,
 	cm_entry_singleowner,
+	cm_entry_host_developer,
 	cm_entry_swh,
 	cm_entry_geothermal,
 	cm_entry_windpower,
@@ -182,6 +183,7 @@ static module_entry_info *module_table[] = {
 	&cm_entry_equpartflip,
 	&cm_entry_saleleaseback,
 	&cm_entry_singleowner,
+	&cm_entry_host_developer,
 	&cm_entry_swh,
 	&cm_entry_geothermal,
 	&cm_entry_windpower,
