@@ -46,7 +46,11 @@
     <ClCompile Include="..\tcs\direct_steam_receivers.cpp" />
     <ClCompile Include="..\tcs\CO2_properties.cpp" />
     <ClCompile Include="..\tcs\heat_exchangers.cpp" />
+    <ClCompile Include="..\tcs\LookupTable.cpp" />
+    <ClCompile Include="..\tcs\LookupTable_1D.cpp" />
+    <ClCompile Include="..\tcs\LookupTable_2D.cpp" />
     <ClCompile Include="..\tcs\numeric_solvers.cpp" />
+    <ClCompile Include="..\tcs\RegenHX.cpp" />
     <ClCompile Include="..\tcs\sam_mw_gen_Type260_csp_solver.cpp" />
     <ClCompile Include="..\tcs\sam_mw_pt_heliostatfield_csp_solver.cpp" />
     <ClCompile Include="..\tcs\sam_mw_pt_type222_csp_solver.cpp" />
@@ -125,7 +129,11 @@
     <ClInclude Include="..\tcs\direct_steam_receivers.h" />
     <ClInclude Include="..\tcs\CO2_properties.h" />
     <ClInclude Include="..\tcs\heat_exchangers.h" />
+    <ClInclude Include="..\tcs\LookupTable.h" />
+    <ClInclude Include="..\tcs\LookupTable_1D.h" />
+    <ClInclude Include="..\tcs\LookupTable_2D.h" />
     <ClInclude Include="..\tcs\numeric_solvers.h" />
+    <ClInclude Include="..\tcs\RegenHX.h" />
     <ClInclude Include="..\tcs\sco2_cycle_components.h" />
     <ClInclude Include="..\tcs\sco2_partialcooling_cycle.h" />
     <ClInclude Include="..\tcs\sco2_pc_csp_int.h" />
