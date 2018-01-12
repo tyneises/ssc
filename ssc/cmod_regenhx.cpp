@@ -137,49 +137,53 @@ public:
 		uaFile.open("C:\\Users\\Dmitrii\\Desktop\\ua.txt");
 
 		//epsilonFile << "Epsilon, D_fr, L, WallT, Cost, UA, ms\n";
-		epsilonFile << "Epsilon,Cost,UA,T_H_out,dP_H,dP_C,D_fr,L,WallThickness\n";
-		costFile << "Epsilon, D_fr, L, WallT, Cost, UA, ms\n";
-		uaFile << "Epsilon, D_fr, L, WallT, Cost, UA, ms\n";
+		epsilonFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
+		costFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
+		uaFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
 
 		
 		RegenHX regenHot;
 		regenHot.setInletState(T_H_in, P_H, T_C_in, P_C);
-		regenHot.setParameters("parallel", m_dot_H, m_dot_C, Q_dot_loss, P_0, D_s, e_v);
+		regenHot.setParameters(RegenHX::PARALLEL_OM, m_dot_H, m_dot_C, Q_dot_loss, P_0, D_s, e_v);
 
 		double* results = new double[9];
+		char* output = new char[150];
 		clock_t begin, end;
 
-		for (int cost = 135000; cost < 220000; cost += 1000) {
-			regenHot.setDesignTargets("cost", targetdP_max, cost);
+		/*for (int cost = 135000; cost < 220000; cost += 1000) {
+			regenHot.setDesignTargets(RegenHX::COST_TM, cost, targetdP_max);
 			try {
 				begin = clock();
 				regenHot.solveSystem(results);
 				end = clock();
-				costFile << cost << " -> " << results[0] << ", " << results[1] << ", " << results[2] << ", " << results[3] << ", " << results[4] << ", " << results[5] <<
-					", " << double(end - begin) / CLOCKS_PER_SEC * 1000.0 << "\n";
+				sprintf(output, "%.5f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.5f,\t%.5f,\t%.5f,\t\t%.0f",
+					results[0], results[1], results[2], results[3], results[4], results[5], results[6], results[7], results[8], double(end - begin) / CLOCKS_PER_SEC * 1000.0);
+				costFile << output << endl;
+				costFile.flush();
 			}
 			catch (exception e) {
-				costFile << "-, -, -, -, " << cost << ", -, -\n";
+				costFile << "-, -, -, -, " << cost << ", -, -" << endl;
 			}
 		}
 
 		costFile.flush();
-		costFile.close();
+		costFile.close();*/
 
-		for (double eps = 0.1; eps <= 1; eps += 0.01) {
-			regenHot.setDesignTargets("epsilon", targetdP_max, eps);
+		for (double eps = 0.5; eps <= 1; eps += 0.01) {
+
+			regenHot.setDesignTargets(RegenHX::EPSILON_TM, eps, targetdP_max);
+
 			try {
 				begin = clock();
 				regenHot.solveSystem(results);
 				end = clock();
-				//epsilonFile << results[0] << ", " << results[1] << ", " << results[2] << ", " << results[3] << ", " << results[4] << ", " << results[5] <<
-					//																						", " << double(end - begin) / CLOCKS_PER_SEC*1000.0 << "\n";
-				epsilonFile << results[0] << "," << results[1] << "," << results[2] << "," << results[3] << "," << results[4] << "," << results[5] <<
-					"," << results[6] << "," << results[7] << "," << results[8] << ", " << double(end - begin) / CLOCKS_PER_SEC * 1000.0 << "\n";
+				sprintf(output, "%.5f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.5f,\t%.5f,\t%.5f,\t\t%.0f",
+					results[0], results[1], results[2], results[3], results[4], results[5], results[6], results[7], results[8], double(end - begin) / CLOCKS_PER_SEC * 1000.0);
+				epsilonFile << output << endl;
 				epsilonFile.flush();
 			}
 			catch (exception e) {
-				epsilonFile << eps << ", -, -, -, -, -, -\n";
+				epsilonFile << eps << ", -, -, -, -, -, -" << endl;
 				epsilonFile.flush();
 			}
 		}
@@ -187,17 +191,19 @@ public:
 		epsilonFile.flush();
 		epsilonFile.close();
 
-		for (int ua = 340; ua < 2200; ua += 10) {
-			regenHot.setDesignTargets("ua", targetdP_max, ua);
+		for (int ua = 1200; ua <= 3500; ua += 100) {
+			regenHot.setDesignTargets(RegenHX::UA_TM, ua, targetdP_max);
 			try {
 				begin = clock();
 				regenHot.solveSystem(results);
 				end = clock();
-				uaFile << results[0] << ", " << results[6] << ", " << results[7] << ", " << results[3] << ", " << results[4] << ", " << results[2] <<
-					", " << double(end - begin) / CLOCKS_PER_SEC * 1000.0 << "\n";
+				sprintf(output, "%.5f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.5f,\t%.5f,\t%.5f,\t\t%.0f",
+					results[0], results[1], results[2], results[3], results[4], results[5], results[6], results[7], results[8], double(end - begin) / CLOCKS_PER_SEC * 1000.0);
+				uaFile << output << endl;
+				uaFile.flush();
 			}
 			catch (exception e) {
-				uaFile << "-, -, -, -, -, " << ua << ", -\n";
+				uaFile << "-, -, -, -, -, " << ua << ", -" << endl;
 				continue;
 			}
 		}
