@@ -36,7 +36,7 @@ string const RegenHX::DEBUG_LOG_FILEPATH = "./";
 
 #endif
 
-string const RegenHX::LOG_FILEPATH = "./RegenHX_LOG.txt";
+string const RegenHX::LOG_FILEPATH = "./RegenHX_LOG.log";
 string const RegenHX::PROPERTY_FILES = "../tcs/PropertyFiles/";
 string const RegenHX::SPHERES_RP_TABLE_PATH = PROPERTY_FILES + "Spheres_RP.csv";
 string const RegenHX::BALANCED_REGENERATOR_TABLE_PATH = PROPERTY_FILES + "balanced-regenerator.csv";
@@ -335,15 +335,15 @@ void RegenHX::setInletState(double T_H_in, double P_H, double T_C_in, double P_C
 	LOG << "Inlet states are set. T_H_in = " << this->T_H_in << ", P_H = " << this->P_H << ", T_C_in = " << this->T_C_in << ", P_C = " << this->P_C << endl;
 }
 
-void RegenHX::setParameters(string operationMode, double m_dot_H, double m_dot_C, double Q_dot_loss, double P_0, double D_s, double e_v)
+void RegenHX::setParameters(operationModes operationMode, double m_dot_H, double m_dot_C, double Q_dot_loss, double P_0, double D_s, double e_v)
 {
 	this->operationMode = operationMode;
 
-	if(operationMode == "parallel") {
+	if(operationMode == PARALLEL_OM) {
 		this->m_dot_H = m_dot_H / numberOfSets;
 		this->m_dot_C = m_dot_C / numberOfSets;
 	}
-	else if (operationMode == "redundant") {
+	else if (operationMode == REDUNDANT_OM) {
 		this->m_dot_H = m_dot_H;
 		this->m_dot_C = m_dot_C;
 	}
@@ -357,11 +357,18 @@ void RegenHX::setParameters(string operationMode, double m_dot_H, double m_dot_C
 	LOG << endl;
 }
 
-void RegenHX::setDesignTargets(string targetMode, double dP_max, double targetParameter)
+void RegenHX::setDesignTargets(targetModes targetMode, double targetParameter, double dP_max)
 {
 	this->targetdP_max = dP_max;
 	this->targetMode = targetMode;
-	this->targetParameter = targetParameter;
+
+	if (this->operationMode == PARALLEL_OM && targetMode == UA_TM) {
+		this->targetParameter = targetParameter / numberOfSets;
+	}
+	else {
+		this->targetParameter = targetParameter;
+	}
+	
 
 	LOG << "Design targets are set. targetdP_max = " << this->targetdP_max << ", targetMode = " << this->targetMode << ", targetParameter = " << this->targetParameter;
 	LOG << endl;
@@ -384,7 +391,7 @@ void RegenHX::initializeLOGs() {
 	LOG << timestamp << " Run statred!\n";
 
 #ifdef _DEBUG
-	DEBUG_LOG.open(DEBUG_LOG_FILEPATH + "LOG_" + timestamp + "_" + std::to_string(clock()) + ".txt", std::ofstream::app);
+	DEBUG_LOG.open(DEBUG_LOG_FILEPATH + "LOG_" + timestamp + "_" + std::to_string(clock()) + ".log", std::ofstream::app);
 #endif
 }
 
@@ -393,16 +400,26 @@ void RegenHX::initialize(int N_sub_hx)
 	
 }
 
-void RegenHX::solveSystem(double* results)
+void RegenHX::solveSystem()
 {
-	
-	BalanceQdotAs();
 	figureOutL();
 	calculateWallThickness();
 	calculateCost();
+}
+
+void RegenHX::solveSystem(double* results)
+{
+	solveSystem();
 	results[0] = epsilon;
 	results[1] = costHXTotal;
-	results[2] = UA;
+
+	if (this->operationMode == PARALLEL_OM) {
+		results[2] = UA * numberOfSets;
+	}
+	else {
+		results[2] = UA;
+	}
+
 	results[3] = T_H_out;
 	results[4] = dP_H;
 	results[5] = dP_C;
@@ -421,23 +438,21 @@ double RegenHX::od_delta_p_hot(double m_dot_h /*kg/s*/)
 	return ms_des_solved.m_DP_hot_des*pow(m_dot_h / m_dot_H, 1.75);
 }
 
-void RegenHX::design_fix_UA_calc_outlet(double Cost_target, double eff_target, double T_c_in, double P_c_in, double m_dot_c, double P_c_out, double T_h_in, double P_h_in, double m_dot_h, double P_h_out, double & q_dot, double & T_c_out, double & T_h_out)
+void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
 {
 	setInletState(T_h_in, P_h_in, T_c_in, P_c_in);
 	double Q_dot_loss = 100;
 	double P_0 = 45;
 	double D_s = 0.003;
 	double e_v = 0.37;
-	double dP_H_guess = P_h_in - P_h_out;
-	double dP_C_guess = P_c_in - P_c_out;
-	double L_guess = 1;
-	double D_fr_guess = 1;
 	double dP_max = P_h_in - P_h_out;
-	setParameters("parallel", m_dot_h, m_dot_c, Q_dot_loss, P_0, D_s, e_v);
-	setDesignTargets("cost", dP_max, Cost_target);
-	//Fix
-//	solveSystem();
-	q_dot = Q_dot_a;
+	setParameters(PARALLEL_OM, m_dot_h, m_dot_c, Q_dot_loss, P_0, D_s, e_v);
+	setDesignTargets(UA_TM, UA_target, dP_max);
+	
+	solveSystem();
+	q_dot = Q_dot_a * numberOfSets;
 	T_c_out = T_C_out;
 	T_h_out = T_H_out;
 
@@ -447,16 +462,16 @@ void RegenHX::design_fix_UA_calc_outlet(double Cost_target, double eff_target, d
 	//???
 	ms_des_solved.m_min_DT_design = min((T_H_in - T_H_out), (T_C_out - T_C_in));
 	//???
-	ms_des_solved.m_NTU_design = NTU_R_e;
-	ms_des_solved.m_Q_dot_design = Q_dot_a;
+	ms_des_solved.m_NTU_design = NTU_R_e * numberOfSets;
+	ms_des_solved.m_Q_dot_design = Q_dot_a * numberOfSets;
 	ms_des_solved.m_T_c_out = T_C_out;
 	ms_des_solved.m_T_h_out = T_H_out;
-	ms_des_solved.m_UA_design_total = UA;
+	ms_des_solved.m_UA_design_total = UA * numberOfSets;
 }
 
 void RegenHX::off_design_solution(double T_c_in, double P_c_in, double m_dot_c, double P_c_out, double T_h_in, double P_h_in, double m_dot_h, double P_h_out, double & q_dot, double & T_c_out, double & T_h_out)
 {
-	T_C_in = T_c_in;
+	/*T_C_in = T_c_in;
 	T_H_in = T_h_in;
 	P_C = P_c_in;
 	P_H = P_h_in;
@@ -477,7 +492,7 @@ void RegenHX::off_design_solution(double T_c_in, double P_c_in, double m_dot_c, 
 	ms_od_solved.m_q_dot = Q_dot_calc;
 	ms_od_solved.m_T_c_out = T_C_out;
 	ms_od_solved.m_T_h_out = T_H_out;
-	ms_od_solved.m_UA_total = UA;
+	ms_od_solved.m_UA_total = UA;*/
 }
 
 void RegenHX::BalanceQdotAs() {
@@ -763,7 +778,7 @@ int RegenHX::FigureOutD_frHelper::operator()(double D_fr, double * targetParamet
 		return -1;
 	}
 
-	if (system->targetMode == "cost") {
+	if (system->targetMode == COST_TM) {
 		system->calculateWallThickness();
 		system->calculateCost();
 #ifdef _DEBUG
@@ -773,10 +788,10 @@ int RegenHX::FigureOutD_frHelper::operator()(double D_fr, double * targetParamet
 #endif
 		*targetParameter = system->costHXTotal;
 	}
-	else if (system->targetMode == "epsilon") {
+	else if (system->targetMode == EPSILON_TM) {
 		*targetParameter = system->epsilon;
 	}
-	else if (system->targetMode == "ua") {
+	else if (system->targetMode == UA_TM) {
 		*targetParameter = system->UA;
 	}
 	

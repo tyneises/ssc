@@ -20,6 +20,19 @@ using namespace std;
 class RegenHX
 {
 public:
+	
+	enum operationModes {
+		PARALLEL_OM,
+		REDUNDANT_OM
+	};
+
+	enum targetModes {
+		EPSILON_TM,
+		COST_TM,
+		UA_TM
+	};
+
+private:
 
 #ifdef _DEBUG
 	/*! \breif Compiled in _DEBUG only.
@@ -474,21 +487,21 @@ public:
 
 	/*! \brief Sets bed operation mode. [-]
 	*
-	*	To available options are either 'redundant' or 'parallel'.
+	*	Two available options are either 'redundant' or 'parallel'.
 	*	'redundant' - each hot and cold modules can handle full mass-flow and only one set out of
 	*	numberOfSets operates at a time.
 	*
 	*	'parallel' - massflow is split equally between all numberOfSets
 	*	\sa stressAmplitude, wallThickness, calculateWallThickness(), D_fr, D_shell, numberOfSets
 	*/
-	string operationMode;
+	operationModes operationMode;
 
 	/*! \brief Allows to choose which second design parameter to set.
 	*
 	*	Three possible modes are: "epsilon", "cost" or "ua"
 	*	\sa targetParameter
 	*/
-	string targetMode;
+	targetModes targetMode;
 
 	/*! \brief Number of bed modules that total (twice the number of numberOfSets). [-]
 	*
@@ -525,10 +538,10 @@ public:
 	double Patm = 0.101325;
 
 	//TODO [MPa]
-	double P_high = 24.81;
+	double P_high = 24.94;
 	
 	//TODO [MPa]
-	double P_low = 8.292;
+	double P_low = 8.218;
 
 	/*! \brief Volume of the regenerative heat exchanger's shell. [m^3]
 	*
@@ -1329,6 +1342,10 @@ public:
 	//! Returns (RegenHX::dP_C_calc - RegenHX::dP_C) difference
 	double getdP_CsDifference() { return dP_C_calc - dP_C; }
 
+	//! Opens log files
+	void initializeLOGs();
+
+public:
 	/*!	\brief Sets fluid state at hot and cold inlets
 	*
 	*	Without these values CalculateThermoAndPhysicalModels() cannot run.
@@ -1352,7 +1369,7 @@ public:
 	*	\param e_v Porosity or ratio of empty space inside of the heat exchanger to its total volume
 	*	\sa m_dot_H, m_dot_C, Q_dot_loss, P_0, D_s, e_v, CalculateThermoAndPhysicalModels(), setguesses(), setInletState(), initialize(), setDesignTargets()
 	*/
-	void setParameters(string operationMode, double m_dot_H, double m_dot_C, double Q_dot_loss, double P_0, double D_s, double e_v);
+	void setParameters(operationModes operationMode, double m_dot_H, double m_dot_C, double Q_dot_loss, double P_0, double D_s, double e_v);
 
 	/*!	\brief Sets design parameters such as dP_max and epsilon.
 	*
@@ -1360,7 +1377,7 @@ public:
 	*	\param epsilon Target effectiveness of the system
 	*	\sa dP_max, epsilon, CalculateThermoAndPhysicalModels(), setParameters(), setInletState(), initialize(), setGuesses()
 	*/
-	void setDesignTargets(string targetMode, double dP_max, double targetParameter);
+	void setDesignTargets(targetModes targetMode, double targetParameter, double dP_max);
 
 	/*!	\brief Solves the model so that it meets design parameters.
 	*
@@ -1373,15 +1390,13 @@ public:
 	*
 	*	\sa setDesignTargets(), figureOutL(), figureOutD_fr(), BalancedPCs(), BalancedPHs(), BalanceQdotAs(), CalculateThermoAndPhysicalModels()
 	*/
-	void solveSystem(double* results);
-
+	void solveSystem();
 	
-	//public:
+	void solveSystem(double* results);
 
 	C_HX_counterflow::S_des_solved ms_des_solved;
 	C_HX_counterflow::S_od_solved ms_od_solved;
 
-	void initializeLOGs();
 	void initialize(int N_sub_hx);
 
 	//! Constructor that calls RegenHX::loadTables()
@@ -1392,8 +1407,8 @@ public:
 	double od_delta_p_cold(double m_dot_c /*kg/s*/);
 	double od_delta_p_hot(double m_dot_h /*kg/s*/);
 
-	void design_fix_UA_calc_outlet(double Cost_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, 
-		double m_dot_c /*kg/s*/, double P_c_out /*kPa*/, double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+	void design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);
 
 	void off_design_solution(double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
