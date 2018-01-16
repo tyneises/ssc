@@ -86,6 +86,28 @@ public:
 	virtual int operator()(double x, double *y);
 };
 
+template <class T>
+class C_member_mono_eq : public C_monotonic_equation
+{
+
+private:
+	int(T::*mf_monotonic_function)(double x, double *y);
+
+	T* classInst;
+public:
+
+	C_member_mono_eq(T* classInst, int(T::*f)(double x, double *y))
+	{
+		this->classInst = classInst;
+		mf_monotonic_function = f;
+	}
+
+	~C_member_mono_eq() {}
+
+	virtual int operator()(double x, double *y) {
+		return classInst->*mf_monotonic_function(x, y);
+	}
+};
 
 class C_monotonic_eq_solver
 {
