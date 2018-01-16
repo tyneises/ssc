@@ -961,7 +961,6 @@ private:
 		{
 			this->system = system;
 			this->dP_H_upperBound = this->system->P_H;
-
 			this->dP_H_guess1 = (this->dP_H_upperBound - 100) / 100.0;
 			this->dP_H_guess2 = this->dP_H_upperBound / 100.0;
 

@@ -758,9 +758,9 @@ int RegenHX::FigureOutD_frHelper::operator()(double D_fr, double * targetParamet
 #endif
 
 	system->D_fr = D_fr;
-	
 
 	system->BalancedPCs();
+
 #ifdef _DEBUG
 	system->LOG << "epsilon -> " << system->epsilon;
 	system->LOG << ", ua -> " << system->UA;

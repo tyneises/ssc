@@ -169,7 +169,7 @@ public:
 		costFile.flush();
 		costFile.close();*/
 
-		for (double eps = 0.5; eps <= 1; eps += 0.01) {
+		for (double eps = 0.93; eps <= 0.93; eps += 0.01) {
 
 			regenHot.setDesignTargets(RegenHX::EPSILON_TM, eps, targetdP_max);
 
@@ -191,7 +191,7 @@ public:
 		epsilonFile.flush();
 		epsilonFile.close();
 
-		for (int ua = 1200; ua <= 3500; ua += 100) {
+		/*for (int ua = 1200; ua <= 3500; ua += 100) {
 			regenHot.setDesignTargets(RegenHX::UA_TM, ua, targetdP_max);
 			try {
 				begin = clock();
@@ -209,7 +209,7 @@ public:
 		}
 
 		uaFile.flush();
-		uaFile.close();
+		uaFile.close();*/
 
 		//regenHot.setDesignTargets("cost", targetdP_max, targetCost);
 
