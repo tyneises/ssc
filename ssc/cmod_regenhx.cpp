@@ -49,9 +49,10 @@
 
 #include "core.h"
 #include "lib_weatherfile.h"
-#include "RegenHX.h"
+//#include "RegenHX.h"
 // for adjustment factors
 #include "common.h"
+#include "RegeneratorModel.h"
 
 
 static var_info _cm_vtab_regenhx[] = {
@@ -133,18 +134,18 @@ public:
 
 		ofstream epsilonFile, costFile, uaFile;
 		epsilonFile.open("C:\\Users\\Dmitrii\\Desktop\\epsilon.txt");
-		costFile.open("C:\\Users\\Dmitrii\\Desktop\\cost.txt");
-		uaFile.open("C:\\Users\\Dmitrii\\Desktop\\ua.txt");
+		//costFile.open("C:\\Users\\Dmitrii\\Desktop\\cost.txt");
+		//uaFile.open("C:\\Users\\Dmitrii\\Desktop\\ua.txt");
 
 		//epsilonFile << "Epsilon, D_fr, L, WallT, Cost, UA, ms\n";
 		epsilonFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
-		costFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
-		uaFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
+		//costFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
+		//uaFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
 
-		
-		RegenHX regenHot;
-		regenHot.setInletState(T_H_in, P_H, T_C_in, P_C);
-		regenHot.setParameters(RegenHX::PARALLEL_OM, m_dot_H, m_dot_C, Q_dot_loss, P_0, D_s, e_v);
+
+		RegeneratorModel* regenHot = new RegeneratorModel();
+		regenHot->setInletState(T_H_in, P_H, T_C_in, P_C);
+		regenHot->setParameters(m_dot_H, m_dot_C, Q_dot_loss, P_0, D_s, e_v);
 
 		double* results = new double[9];
 		char* output = new char[150];
@@ -169,20 +170,20 @@ public:
 		costFile.flush();
 		costFile.close();*/
 
-		for (double eps = 0.93; eps <= 0.93; eps += 0.01) {
+		for (double eps = 0.1; eps <= 1; eps += 0.01) {
 
-			regenHot.setDesignTargets(RegenHX::EPSILON_TM, eps, targetdP_max);
+			regenHot->setDesignTargets(targetModes::EPSILON, eps, targetdP_max);
 
-			try {
-				begin = clock();
-				regenHot.solveSystem(results);
+			begin = clock();
+			if (regenHot->solveSystem(results) >= 0) {
 				end = clock();
 				sprintf(output, "%.5f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.5f,\t%.5f,\t%.5f,\t\t%.0f",
 					results[0], results[1], results[2], results[3], results[4], results[5], results[6], results[7], results[8], double(end - begin) / CLOCKS_PER_SEC * 1000.0);
 				epsilonFile << output << endl;
 				epsilonFile.flush();
 			}
-			catch (exception e) {
+			else {
+				end = clock();
 				epsilonFile << eps << ", -, -, -, -, -, -" << endl;
 				epsilonFile.flush();
 			}
@@ -209,45 +210,11 @@ public:
 		}
 
 		uaFile.flush();
-		uaFile.close();*/
+		uaFile.close();*/;
 
-		//regenHot.setDesignTargets("cost", targetdP_max, targetCost);
-
-		//double* results_c = new double[6];
-		//double* results_e = new double[6];
-		//double* results_u = new double[6];
-
-		//Cost
-		/*regenHot.solveSystem(results_c);
-
-		assign("epsilon_c", var_data((ssc_number_t)results_c[0]));
-		assign("D_fr_c", var_data((ssc_number_t)results_c[1]));
-		assign("L_c", var_data((ssc_number_t)results_c[2]));
-		assign("wallThickness_c", var_data((ssc_number_t)results_c[3]));
-		assign("totalCost_c", var_data((ssc_number_t)results_c[4]));
-		assign("UA_c", var_data((ssc_number_t)results_c[5]));*/
-
-		//Epsilon
-		/*regenHot.setDesignTargets("epsilon", targetdP_max, 0.54);
-		regenHot.solveSystem(results_e);
-
-		assign("epsilon_e", var_data((ssc_number_t)results_e[0]));
-		assign("D_fr_e", var_data((ssc_number_t)results_e[1]));
-		assign("L_e", var_data((ssc_number_t)results_e[2]));
-		assign("wallThickness_e", var_data((ssc_number_t)results_e[3]));
-		assign("totalCost_e", var_data((ssc_number_t)results_e[4]));
-		assign("UA_e", var_data((ssc_number_t)results_e[5]));*/
-
-		//UA
-		/*regenHot.setDesignTargets("ua", targetdP_max, results_c[5]);
-		regenHot.solveSystem(results_u);
-
-		assign("epsilon_u", var_data((ssc_number_t)results_u[0]));
-		assign("D_fr_u", var_data((ssc_number_t)results_u[1]));
-		assign("L_u", var_data((ssc_number_t)results_u[2]));
-		assign("wallThickness_u", var_data((ssc_number_t)results_u[3]));
-		assign("totalCost_u", var_data((ssc_number_t)results_u[4]));
-		assign("UA_u", var_data((ssc_number_t)results_u[5]));*/
+		/*RegeneratorModel* model = new RegeneratorModel();
+		double result = model->solve();
+		spd::get("logger")->info("The x = " + std::to_string(result));*/
 	}
 
 };

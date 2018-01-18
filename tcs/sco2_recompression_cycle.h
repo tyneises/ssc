@@ -60,7 +60,7 @@
 #include "CO2_properties.h"
 
 #include "heat_exchangers.h"
-#include "RegenHX.h"
+//#include "RegenHX.h"
 
 #include "numeric_solvers.h"
 
@@ -603,7 +603,8 @@ private:
 	C_HeatExchanger /*m_LT, m_HT,*/ m_PHX, m_PC;
 	
 	C_HX_co2_to_co2 mc_LT_recup;
-	RegenHX mc_HT_recup;
+	C_HX_co2_to_co2 mc_HT_recup;
+	//RegenHX mc_HT_recup;
 	
 		// Input/Ouput structures for class methods
 	S_design_limits ms_des_limits;

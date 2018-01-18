@@ -91,7 +91,7 @@ class C_member_mono_eq : public C_monotonic_equation
 {
 
 private:
-	int(T::*mf_monotonic_function)(double x, double *y);
+	int (T::*mf_monotonic_function)(double x, double *y);
 
 	T* classInst;
 public:
@@ -105,7 +105,7 @@ public:
 	~C_member_mono_eq() {}
 
 	virtual int operator()(double x, double *y) {
-		return classInst->*mf_monotonic_function(x, y);
+		return (classInst->*mf_monotonic_function)(x, y);
 	}
 };
 
@@ -208,6 +208,8 @@ public:
 		MAX_ITER_SLOPE_NEG_BOTH_ERRS,
 	};
 	
+	void reset();
+
 	C_monotonic_eq_solver(C_monotonic_equation & f);
 
 	~C_monotonic_eq_solver(){}
