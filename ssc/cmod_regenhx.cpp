@@ -49,10 +49,9 @@
 
 #include "core.h"
 #include "lib_weatherfile.h"
-//#include "RegenHX.h"
+#include "RegenHX.h"
 // for adjustment factors
 #include "common.h"
-#include "RegeneratorModel.h"
 
 
 static var_info _cm_vtab_regenhx[] = {
@@ -134,41 +133,43 @@ public:
 
 		ofstream epsilonFile, costFile, uaFile;
 		epsilonFile.open("C:\\Users\\Dmitrii\\Desktop\\epsilon.txt");
-		//costFile.open("C:\\Users\\Dmitrii\\Desktop\\cost.txt");
-		//uaFile.open("C:\\Users\\Dmitrii\\Desktop\\ua.txt");
+		costFile.open("C:\\Users\\Dmitrii\\Desktop\\cost.txt");
+		uaFile.open("C:\\Users\\Dmitrii\\Desktop\\ua.txt");
 
-		//epsilonFile << "Epsilon, D_fr, L, WallT, Cost, UA, ms\n";
 		epsilonFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
-		//costFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
-		//uaFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
+		costFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
+		uaFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
 
 
-		RegeneratorModel* regenHot = new RegeneratorModel();
-		regenHot->setInletState(T_H_in, P_H, T_C_in, P_C);
-		regenHot->setParameters(m_dot_H, m_dot_C, Q_dot_loss, P_0, D_s, e_v);
+		//RegeneratorModel* regenHot = new RegeneratorModel();
+		RegenHX* regenHot = new RegenHX();
+		regenHot->setInletStates(T_H_in, P_H, T_C_in, P_C);
+		regenHot->setParameters(operationModes::PARALLEL, m_dot_H, m_dot_C, Q_dot_loss, P_0, D_s, e_v);
 
 		double* results = new double[9];
 		char* output = new char[150];
 		clock_t begin, end;
 
-		/*for (int cost = 135000; cost < 220000; cost += 1000) {
-			regenHot.setDesignTargets(RegenHX::COST_TM, cost, targetdP_max);
-			try {
-				begin = clock();
-				regenHot.solveSystem(results);
+		for (int cost = 135000; cost <= 220000; cost += 5000) {
+
+			regenHot->setDesignTargets(targetModes::COST, cost, targetdP_max);
+
+			begin = clock();
+			if (regenHot->solveSystem(results) >= 0) {
 				end = clock();
 				sprintf(output, "%.5f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.5f,\t%.5f,\t%.5f,\t\t%.0f",
 					results[0], results[1], results[2], results[3], results[4], results[5], results[6], results[7], results[8], double(end - begin) / CLOCKS_PER_SEC * 1000.0);
 				costFile << output << endl;
 				costFile.flush();
 			}
-			catch (exception e) {
+			else {
+				end = clock();
 				costFile << "-, -, -, -, " << cost << ", -, -" << endl;
 			}
 		}
 
 		costFile.flush();
-		costFile.close();*/
+		costFile.close();
 
 		for (double eps = 0.1; eps <= 1; eps += 0.01) {
 
@@ -192,29 +193,27 @@ public:
 		epsilonFile.flush();
 		epsilonFile.close();
 
-		/*for (int ua = 1200; ua <= 3500; ua += 100) {
-			regenHot.setDesignTargets(RegenHX::UA_TM, ua, targetdP_max);
-			try {
-				begin = clock();
-				regenHot.solveSystem(results);
+		for (int ua = 300; ua <= 3500; ua += 100) {
+
+			regenHot->setDesignTargets(targetModes::UA, ua, targetdP_max);
+
+			begin = clock();
+			if (regenHot->solveSystem(results) >= 0) {
 				end = clock();
 				sprintf(output, "%.5f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.5f,\t%.5f,\t%.5f,\t\t%.0f",
 					results[0], results[1], results[2], results[3], results[4], results[5], results[6], results[7], results[8], double(end - begin) / CLOCKS_PER_SEC * 1000.0);
 				uaFile << output << endl;
 				uaFile.flush();
 			}
-			catch (exception e) {
+			else {
+				end = clock();
 				uaFile << "-, -, -, -, -, " << ua << ", -" << endl;
 				continue;
 			}
 		}
 
 		uaFile.flush();
-		uaFile.close();*/;
-
-		/*RegeneratorModel* model = new RegeneratorModel();
-		double result = model->solve();
-		spd::get("logger")->info("The x = " + std::to_string(result));*/
+		uaFile.close();
 	}
 
 };
