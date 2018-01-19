@@ -11,7 +11,11 @@ RegeneratorModel::RegeneratorModel()
 	loadTables();
 
 	auto logger = spdlog::basic_logger_mt("logger", LOG_FILEPATH);
-	//spdlog::set_level(spdlog::level::debug);
+
+#ifdef _DEBUG
+	spdlog::set_level(spdlog::level::debug);
+#endif
+	
 	spdlog::drop("logger");
 	spdlog::register_logger(logger);
 	spdlog::set_pattern("[%b %d %H:%M:%S] [%l] %v");
@@ -19,6 +23,7 @@ RegeneratorModel::RegeneratorModel()
 
 RegeneratorModel::~RegeneratorModel()
 {
+	spdlog::get("logger")->flush();
 }
 
 void RegeneratorModel::packedspheresNdFit(double Re, double * f, double * j_H)
@@ -251,7 +256,34 @@ void RegeneratorModel::loadTables() {
 	fatigueTable = new LookupTable_1D(FATIGUE_TABLE_PATH);
 }
 
-void RegeneratorModel::setInletState(double T_H_in, double P_H, double T_C_in, double P_C)
+void RegeneratorModel::calculateCost()
+{
+	D_shell = D_fr + insulationThickness * 2;
+	R_i = D_shell / 2.0;
+	
+	solveForWallThickness->solve();
+
+	volumeShell = (PI * (pow(R_o, 2) - pow(R_i, 2)) * L + 4 / 3.0 * PI * (pow(R_o, 3) - pow(R_i, 3))); // a cylinder plus two half spheres
+	volumeInsulation = (PI * (pow(R_i, 2) - pow(R_i - insulationThickness, 2)) * L + 4 / 3.0 * PI * pow(R_i, 3)*insulationParameter);
+	volumeBed = V_0 * (1 - e_v);
+
+	double shellMaterialDensity = shellMaterialTable->getValue("rho", "T", T_f);
+	double insulationMaterialDensity = insulationMaterialTable->getValue("rho", "T", T_f);
+	double bedMaterialDensity = bedMaterialTable->getValue("rho", "T", T_f);
+
+	massShell = shellMaterialDensity * volumeShell;
+	massInsulation = insulationMaterialDensity * volumeInsulation;
+	massBed = bedMaterialDensity * volumeBed;
+
+	costShellMaterial = specificCostShellMaterial * massShell;
+	costInsulationMaterial = specificCostInsulationMaterial * massInsulation;
+	costBedMaterial = specificCostBedMaterial * massBed;
+
+	costMaterial = costShellMaterial + costInsulationMaterial + costBedMaterial;
+	costModule = costMaterial + priceCasting + priceCastingSteel + priceWelding;
+}
+
+void RegeneratorModel::setInletStates(double T_H_in, double P_H, double T_C_in, double P_C)
 {
 	this->T_H_in = T_H_in;
 	this->P_H = P_H;
@@ -269,6 +301,9 @@ void RegeneratorModel::setParameters(double m_dot_H, double m_dot_C, double Q_do
 	this->P_0 = P_0;
 	this->D_s = D_s;
 	this->e_v = e_v;
+
+	numberOfCycles = 1.2 * operationYears * 365 * operationHoursPerDay * 60 * 60 / P_0;
+	stressAmplitude = fatigueTable->getValue("Sa", "N", numberOfCycles) * 6.89475729; //Convert ksi to MPA
 
 	//LOG << "Regenerator parameters are set. operationMode = " << this->operationMode << ", m_dot_H = " << this->m_dot_H << ", m_dot_C = " << this->m_dot_C;
 	//LOG << ", Q_dot_loss = " << this->Q_dot_loss << ", P_0 = " << this->P_0 << ", D_s = " << this->D_s << ", e_v = " << this->e_v;
@@ -293,9 +328,6 @@ int RegeneratorModel::balanceHeatTransfer_Equation(double T_H_out, double * Qdot
 		CalculateThermoAndPhysicalModels();
 	}
 	catch (const invalid_argument& e) {
-/*#ifdef _DEBUG
-		system->lastCoreError = e.what();
-#endif*/
 		return -1;
 	}
 
@@ -327,22 +359,44 @@ int RegeneratorModel::balanceColdPressureDrop_Equation(double dP_C, double * dP_
 	return 0;
 }
 
+int RegeneratorModel::solveForL_Equation(double L, double * dP_max)
+{
+	this->L = L;
+
+	int status = balanceColdPressureDrop->solve();
+
+	spdlog::get("logger")->debug("\tL = " + std::to_string(L) + " epsilon -> " + std::to_string(epsilon) + " ua -> " + std::to_string(UA)
+		+ " dP_max -> " + std::to_string(this->dP_max) + " status  -> " + std::to_string(status));
+	
+
+	if (status != C_monotonic_eq_solver::CONVERGED) {
+		return -1;
+	}
+
+	*dP_max = this->dP_max;
+
+	return 0;
+}
+
 int RegeneratorModel::solveForDfr_Equation(double D_fr, double * targetParameter)
 {
 	this->D_fr = D_fr;
 
-	int status = balanceColdPressureDrop->solve();
+	spdlog::get("logger")->debug(" --> Entered with D_fr = " + std::to_string(D_fr));
 
-	spdlog::get("logger")->debug("\tD_fr = " + std::to_string(D_fr) + " epsilon -> " + std::to_string(epsilon) + " dP_max -> " + std::to_string(this->dP_max));
+	int status = solveForL->solve();
+
+	spdlog::get("logger")->debug("\tepsilon -> " + std::to_string(epsilon) + +" ua -> " + std::to_string(UA) +
+		" dP_max -> " + std::to_string(this->dP_max) + " status  -> " + std::to_string(status));
+
 
 	if (status != C_monotonic_eq_solver::CONVERGED) {
 		return -1;
 	}
 
 	if (targetMode == targetModes::COST) {
-		//this->calculateWallThickness();
-		//this->calculateCost();
-		//*targetParameter = this->costHXTotal;
+		calculateCost();
+		*targetParameter = costModule;
 	}
 	else if (targetMode == targetModes::EPSILON) {
 		*targetParameter = epsilon;
@@ -355,95 +409,184 @@ int RegeneratorModel::solveForDfr_Equation(double D_fr, double * targetParameter
 	return 0;
 }
 
-int RegeneratorModel::solveForL_Equation(double L, double * dP_max)
+int RegeneratorModel::solveForWallThickness_Equation(double th, double * stressAmplitude)
 {
-	this->L = L;
+	wallThickness = th;
 
-	spdlog::get("logger")->critical("Entered with L = " + std::to_string(L));
+	R_o = R_i + wallThickness;
 
-	int status = solveForDfr->solve();
+	double RiSquared = pow(R_i, 2);
 
-	spdlog::get("logger")->debug("\tepsilon -> " + std::to_string(epsilon) + " dP_max -> " + std::to_string(this->dP_max) + " status  -> " + std::to_string(status));
+	double RoSquared = pow(R_o, 2);
 
-	if (status != C_monotonic_eq_solver::CONVERGED) {
-		return -1;
-	}
+	double RSquareDifference = RoSquared - RiSquared;
 
-	*dP_max = this->dP_max;
+	double RSquareProduct = RoSquared * RiSquared;
+
+	double magicPieceRi = RiSquared * RSquareDifference;
+
+	double magicPieceRo = RoSquared * RSquareDifference;
+
+	double magicPieceHigh = RSquareProduct * (Patm - P_high);
+
+	double magicPieceLow = RSquareProduct * (Patm - P_low);
+
+	//sigma_a_h = (P_high*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2);		
+	double sigma_a_h = (P_high * RiSquared - Patm * RoSquared) / RSquareDifference; //axial stress calculation
+
+	//sigma_c_1_h = (P_high*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2) - r_i ^ 2 * r_o ^ 2 * (P_o - P_high) / (r_i ^ 2 * (r_o ^ 2 - r_i ^ 2));	//hoop stress at inner surface
+	double sigma_c_1_h = sigma_a_h - magicPieceHigh / magicPieceRi;	//hoop stress at inner surface
+
+	//sigma_c_2_h = (P_high*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2) - r_i ^ 2 * r_o ^ 2 * (P_o - P_high) / (r_o ^ 2 * (r_o ^ 2 - r_i ^ 2));	//hoop stress at outer surface
+	double sigma_c_2_h = sigma_a_h - magicPieceHigh / magicPieceRo;	//hoop stress at outer surface
+
+	//sigma_r_1_h = (P_high*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2) + r_i ^ 2 * r_o ^ 2 * (P_o - P_high) / (r_i ^ 2 * (r_o ^ 2 - r_i ^ 2));	//radial stress at inner surface
+	double sigma_r_1_h = sigma_a_h + magicPieceHigh / magicPieceRi;	//radial stress at inner surface
+
+	//sigma_r_2_h = (P_high*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2) + r_i ^ 2 * r_o ^ 2 * (P_o - P_high) / (r_o ^ 2 * (r_o ^ 2 - r_i ^ 2));	//radial stress at outer surface
+	double sigma_r_2_h = sigma_a_h + magicPieceHigh / magicPieceRo;	//radial stress at outer surface
+
+	double sigma_prime_1_h = sqrt((pow((sigma_r_1_h - sigma_c_1_h), 2) + pow((sigma_c_1_h - sigma_a_h), 2) + pow((sigma_a_h - sigma_r_1_h), 2)) / 2.0);	//equivalent stress at inner surface
+	double sigma_prime_2_h = sqrt((pow((sigma_r_2_h - sigma_c_2_h), 2) + pow((sigma_c_2_h - sigma_a_h), 2) + pow((sigma_a_h - sigma_r_2_h), 2)) / 2.0);	//equivalent stress at outer surface
+	double sigma_prime_h = max(sigma_prime_1_h, sigma_prime_2_h);		//largest equivalent stress
+
+
+	// sigma_a_l = (P_low*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2);	//axial stress calculation
+	double sigma_a_l = (P_low*RiSquared - Patm * RoSquared) / RSquareDifference;	//axial stress calculation
+
+	//sigma_c_1_l = (P_low*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2) - r_i ^ 2 * r_o ^ 2 * (P_o - P_low) / (r_i ^ 2 * (r_o ^ 2 - r_i ^ 2));	//hoop stress at inner surface
+	double sigma_c_1_l = sigma_a_l - magicPieceLow / magicPieceRi;	//hoop stress at inner surface
+
+	//sigma_c_2_l = (P_low*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2) - r_i ^ 2 * r_o ^ 2 * (P_o - P_low) / (r_o ^ 2 * (r_o ^ 2 - r_i ^ 2));	//hoop stress at outer surface
+	double sigma_c_2_l = sigma_a_l - magicPieceLow / magicPieceRo;	//hoop stress at outer surface
+
+	//sigma_r_1_l = (P_low*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2) + r_i ^ 2 * r_o ^ 2 * (P_o - P_low) / (r_i ^ 2 * (r_o ^ 2 - r_i ^ 2));	//radial stress at inner surface
+	double sigma_r_1_l = sigma_a_l + magicPieceLow / magicPieceRi;	//radial stress at inner surface
+
+	//sigma_r_2_l = (P_low*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2) + r_i ^ 2 * r_o ^ 2 * (P_o - P_low) / (r_o ^ 2 * (r_o ^ 2 - r_i ^ 2));	//radial stress at outer surface
+	double sigma_r_2_l = sigma_a_l + magicPieceLow / magicPieceRo;	//radial stress at outer surface
+
+	double sigma_prime_1_l = sqrt((pow((sigma_r_1_l - sigma_c_1_l), 2) + pow((sigma_c_1_l - sigma_a_l), 2) + pow((sigma_a_l - sigma_r_1_l), 2)) / 2.0);	//equivalent stress at inner surface
+	double sigma_prime_2_l = sqrt((pow((sigma_r_2_l - sigma_c_2_l), 2) + pow((sigma_c_2_l - sigma_a_l), 2) + pow((sigma_a_l - sigma_r_2_l), 2)) / 2.0);	//equivalent stress at outer surface
+	double sigma_prime_l = max(sigma_prime_1_l, sigma_prime_2_l);		//largest equivalent stress
+
+	*stressAmplitude = (sigma_prime_h - sigma_prime_l) / 2.0;
 
 	return 0;
 }
 
-int RegeneratorModel::solveSystem(double* results)
+int RegeneratorModel::solveSystem()
 {
-	double* guessT = new double[2];
-	double* guessdP_H = new double[2];
-	double* guessdP_C = new double[2];
-	double* guessD_fr = new double[2];
-	double* guessL = new double[4];
+	SolverParameters<RegeneratorModel> HT;
+	HT.solverName = "Balance Heat Tansfer";
+	HT.target = 0;
+	HT.guessValue1 = (T_C_in + T_H_in) * 0.5;		HT.guessValue2 = (T_C_in + T_H_in) * 0.7;
+	HT.lowerBound = N_co2_props::T_lower_limit;		HT.upperBound = N_co2_props::T_upper_limit;
+	HT.tolerance = 0.001;
+	HT.iterationLimit = 50;
+	HT.isErrorRel = false;
+	HT.classInst = this;
+	HT.monoEquation = &RegeneratorModel::balanceHeatTransfer_Equation;
 
-	guessT[0] = (T_C_in + T_H_in) * 0.5;
-	guessT[1] = (T_C_in + T_H_in) * 0.7;
-	guessdP_H[0] = (P_H - 100) / 100.0;
-	guessdP_H[1] = P_H / 100.0;;
-	guessdP_C[0] = (P_C - 100) / 1000.0;
-	guessdP_C[1] = P_C / 1000.0;
-	guessD_fr[0] = 0.7;
-	guessD_fr[1] = 0.9;
-	guessL[0] = 0.8;
-	guessL[1] = 1;
-	guessL[2] = 0.4;
-	guessL[3] = 0.6;
+	SolverParameters<RegeneratorModel> HPD;
+	HPD.solverName = "Balance Hot Pressure Drop";
+	HPD.target = 0;
+	HPD.guessValue1 = (P_H - 100) / 100.0;		HPD.guessValue2 = P_H / 100.0;
+	HPD.lowerBound = 0.1;						HPD.upperBound = P_H;
+	HPD.tolerance = 0.01;
+	HPD.iterationLimit = 50;
+	HPD.isErrorRel = false;
+	HPD.classInst = this;
+	HPD.monoEquation = &RegeneratorModel::balanceHotPressureDrop_Equation;
 
-	double toleranceL = 0.01;
-
-	balanceHeatTransfer = 
-		new MonoSolver<RegeneratorModel>("Balance Heat Tansfer", 0, guessT, N_co2_props::T_lower_limit, N_co2_props::T_upper_limit, 0.001, 50, false, this, &RegeneratorModel::balanceHeatTransfer_Equation);
-
-	balanceHotPressureDrop = 
-		new MonoSolver<RegeneratorModel>("Balance Hot Pressure Drop", 0, guessdP_H, 0.1, P_H, 0.01, 50, false, this, &RegeneratorModel::balanceHotPressureDrop_Equation);
-
-	balanceColdPressureDrop = 
-		new MonoSolver<RegeneratorModel>("Balance Cold Pressure Drop", 0, guessdP_C, 0.1, P_C, 0.01, 50, false, this, &RegeneratorModel::balanceColdPressureDrop_Equation);
+	SolverParameters<RegeneratorModel> CPD;
+	CPD.solverName = "Balance Cold Pressure Drop";
+	CPD.target = 0;
+	CPD.guessValue1 = (P_C - 100) / 1000.0;		CPD.guessValue2 = P_C / 1000.0;
+	CPD.lowerBound = 0.1;						CPD.upperBound = P_C;
+	CPD.tolerance = 0.01;
+	CPD.iterationLimit = 50;
+	CPD.isErrorRel = false;
+	CPD.classInst = this;
+	CPD.monoEquation = &RegeneratorModel::balanceColdPressureDrop_Equation;
 	
-	solveForDfr = 
-		new MonoSolver<RegeneratorModel>("Diameter Solver", targetParameter, guessD_fr, 0.1, 10, 0.001, 50, true, this, &RegeneratorModel::solveForDfr_Equation);
-	
-	solveForL =
-		new MonoSolver<RegeneratorModel>("Length Solver", targetdP_max, guessL, 0.1, 10, toleranceL, 50, true, this, &RegeneratorModel::solveForL_Equation);
-	
-	//double tolL = 1000;
-	int statusSolverL = solveForL->solve();//&tolL);
+	SolverParameters<RegeneratorModel> LS;
+	LS.solverName = "Length Solver";
+	LS.target = targetdP_max;
+	LS.guessValue1 = 0.8;	LS.guessValue2 = 1;
+	LS.lowerBound = 0.1;	LS.upperBound = 10;
+	LS.tolerance = 0.01;
+	LS.iterationLimit = 50;
+	LS.isErrorRel = true;
+	LS.classInst = this;
+	LS.monoEquation = &RegeneratorModel::solveForL_Equation;
 
-	if (statusSolverL == C_monotonic_eq_solver::CONVERGED) {
-		results[0] = epsilon;
-		results[1] = -1;
-		results[2] = UA;
-		results[3] = T_H_out;
-		results[4] = dP_H;
-		results[5] = dP_C;
-		results[6] = D_fr;
-		results[7] = L;
-		results[8] = -1;
+	SolverParameters<RegeneratorModel> DS;
+	DS.solverName = "Diameter Solver";
+	DS.target = targetParameter;
+	DS.guessValue1 = 0.7;	DS.guessValue2 = 0.9;
+	DS.lowerBound = 0.1;	DS.upperBound = 10;
+	DS.tolerance = 0.001;
+	DS.iterationLimit = 50;
+	DS.isErrorRel = true;
+	DS.classInst = this;
+	DS.monoEquation = &RegeneratorModel::solveForDfr_Equation;
+
+	SolverParameters<RegeneratorModel> WT;
+	WT.solverName = "Wall Thickness";
+	WT.target = stressAmplitude;
+	WT.guessValue1 = 0.04;	WT.guessValue2 = 0.05;
+	WT.lowerBound = 0;	WT.upperBound = 1;
+	WT.tolerance = 0.001;
+	WT.iterationLimit = 50;
+	WT.isErrorRel = true;
+	WT.classInst = this;
+	WT.monoEquation = &RegeneratorModel::solveForWallThickness_Equation;
+
+	balanceHeatTransfer = new MonoSolver<RegeneratorModel>(&HT);
+	balanceHotPressureDrop = new MonoSolver<RegeneratorModel>(&HPD);
+	balanceColdPressureDrop = new MonoSolver<RegeneratorModel>(&CPD);
+	solveForL = new MonoSolver<RegeneratorModel>(&LS);
+	solveForDfr = new MonoSolver<RegeneratorModel>(&DS);
+	solveForWallThickness = new MonoSolver<RegeneratorModel>(&WT);
+	
+	
+	double toleranceD_fr;
+	int statusSolverDfr = solveForDfr->solve(&toleranceD_fr);
+
+	if (statusSolverDfr == C_monotonic_eq_solver::CONVERGED) {
+		calculateCost();
 
 		return 0;
 	}
-	/*else if(abs(tolL) <= 1.5 * toleranceL){
+	else if(toleranceD_fr <= 0.01){
 
-		spdlog::get("logger")->warn("Solution was obtained with a worse tolerance of " + std::to_string(tolL));
+		spdlog::get("logger")->warn("Worse tolerance = " + std::to_string(toleranceD_fr) + " | TargetMode = " + std::to_string(targetMode) +
+			", Target = " + std::to_string(targetParameter));
 
-		results[0] = epsilon;
-		results[1] = -1;
-		results[2] = UA;
-		results[3] = T_H_out;
-		results[4] = dP_H;
-		results[5] = dP_C;
-		results[6] = D_fr;
-		results[7] = L;
-		results[8] = -1;
-
+		calculateCost();
 		return 1;
-	}*/
+	}
 
 	return -1;
+}
+
+void RegeneratorModel::getSolution(RegeneratorSolution * solution)
+{
+	solution->dP_C = dP_C;
+	solution->dP_H = dP_H;
+	solution->epsilon = epsilon;
+	solution->T_H_in = T_H_in;
+	solution->T_C_in = T_C_in;
+	solution->T_C_out = T_C_out;
+	solution->T_H_out = T_H_out;
+	solution->NTU_R_e = NTU_R_e;
+	solution->Q_dot_a = Q_dot_a;
+	solution->UA = UA;
+	solution->m_dot_H = m_dot_H;
+	solution->m_dot_C = m_dot_C;
+	solution->costModule = costModule;
+	solution->L = L;
+	solution->D_fr = D_fr;
+	solution->wallThickness = wallThickness;
 }

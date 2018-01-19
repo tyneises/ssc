@@ -4,10 +4,7 @@
 #include "CO2_properties.h"
 #include <string>
 #include "numeric_solvers.h"
-#include "heat_exchangers.h"
 #include "definitions.h"
-#include <iostream>
-#include <ctime>
 
 namespace operationModes {
 	enum operationModes {
@@ -22,6 +19,25 @@ namespace targetModes {
 		UA
 	};
 }
+
+struct RegeneratorSolution {
+	double dP_C;
+	double dP_H;
+	double epsilon;
+	double T_H_in;
+	double T_C_in;
+	double T_C_out;
+	double T_H_out;
+	double NTU_R_e;
+	double Q_dot_a;
+	double UA;
+	double m_dot_H;
+	double m_dot_C;
+	double costModule;
+	double L;
+	double D_fr;
+	double wallThickness;
+};
 
 class RegeneratorModel
 {
@@ -580,7 +596,7 @@ private:
 	*	Regenerative heat exchanger consists of numberOfModulesTotal bed modules.
 	*	\sa calculateCost(), costPerModuleMaterial
 	*/
-	double costModuleTotal;
+	double costModule;
 
 	/*!	\brief The value of the second target design parameter.
 	*	\sa targetMode
@@ -693,6 +709,18 @@ private:
 	*/
 	void loadTables();
 
+	/*! \breif Calculates total cost of the regenerator.
+	*	calculateWallThickness() must be called prior!
+	*/
+	void calculateCost();
+
+	MonoSolver<RegeneratorModel>* balanceHeatTransfer;
+	MonoSolver<RegeneratorModel>* balanceHotPressureDrop;
+	MonoSolver<RegeneratorModel>* balanceColdPressureDrop;
+	MonoSolver<RegeneratorModel>* solveForL;
+	MonoSolver<RegeneratorModel>* solveForDfr;
+	MonoSolver<RegeneratorModel>* solveForWallThickness;
+
 public:
 	RegeneratorModel();
 	~RegeneratorModel();
@@ -706,7 +734,7 @@ public:
 	*	\param P_C Pressure of fluid at cold inlet in [kPa]
 	*	\sa T_H_in, P_H, T_C_in, P_C, CalculateThermoAndPhysicalModels(), setParameters(), setParameters(), initialize(), setDesignTargets()
 	*/
-	void setInletState(double T_H_in, double P_H, double T_C_in, double P_C);
+	void setInletStates(double T_H_in, double P_H, double T_C_in, double P_C);
 
 	/*!	\brief Sets flow and heat exchanger parameters
 	*
@@ -728,19 +756,15 @@ public:
 	*	\sa dP_max, epsilon, CalculateThermoAndPhysicalModels(), setParameters(), setInletState(), initialize(), setGuesses()
 	*/
 	void setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max);
-	
-	MonoSolver<RegeneratorModel>* balanceHeatTransfer;
-	MonoSolver<RegeneratorModel>* balanceHotPressureDrop;
-	MonoSolver<RegeneratorModel>* balanceColdPressureDrop;
-	MonoSolver<RegeneratorModel>* solveForDfr;
-	MonoSolver<RegeneratorModel>* solveForL;
 
 	int balanceHeatTransfer_Equation(double T_H_out, double * QdotAsDifference);
 	int balanceHotPressureDrop_Equation(double dP_H, double * dP_HsDifference);
 	int balanceColdPressureDrop_Equation(double dP_C, double * dP_CsDifference);
-	int solveForDfr_Equation(double D_fr, double * targetParameter);
 	int solveForL_Equation(double L, double * dP_max);
+	int solveForDfr_Equation(double D_fr, double * targetParameter);
+	int solveForWallThickness_Equation(double th, double * stressAmplitude);
 
-	int solveSystem(double* results);
+	int solveSystem();
+	void getSolution(RegeneratorSolution* solution);
 };
 
