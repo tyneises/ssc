@@ -66,8 +66,8 @@ int C_import_mono_eq::operator()(double x, double *y)
 void C_monotonic_eq_solver::reset()
 {
 	m_x_guess = m_x_neg_err = m_x_pos_err = m_y_err_pos = m_y_err_neg =
-		m_y_err =
-		m_func_x_lower = m_func_x_upper = std::numeric_limits<double>::quiet_NaN();
+		m_y_err = std::numeric_limits<double>::quiet_NaN();
+		//m_func_x_lower = m_func_x_upper = std::numeric_limits<double>::quiet_NaN();
 
 	m_is_pos_bound = m_is_neg_bound =
 		m_is_pos_error = m_is_neg_error =
@@ -77,9 +77,9 @@ void C_monotonic_eq_solver::reset()
 	m_iter = -1;
 
 	// Set default settings:
-	m_tol = 0.001;
-	m_is_err_rel = true;
-	m_iter_max = 50;
+	//m_tol = 0.001;
+	//m_is_err_rel = true;
+	//m_iter_max = 50;
 }
 
 C_monotonic_eq_solver::C_monotonic_eq_solver(C_monotonic_equation & f): mf_mono_eq(f)

@@ -10,20 +10,20 @@ RegeneratorModel::RegeneratorModel()
 {
 	loadTables();
 
-	auto logger = spdlog::basic_logger_mt("logger", LOG_FILEPATH);
-
-#ifdef _DEBUG
-	spdlog::set_level(spdlog::level::debug);
-#endif
-	
-	spdlog::drop("logger");
-	spdlog::register_logger(logger);
-	spdlog::set_pattern("[%b %d %H:%M:%S] [%l] %v");
+	if (spdlog::get("logger") == nullptr) {
+		auto logger = spdlog::basic_logger_mt("logger", LOG_FILEPATH);
+		//spdlog::set_level(spdlog::level::debug);
+		spdlog::flush_on(spdlog::level::info);
+		spdlog::drop("logger");
+		spdlog::register_logger(logger);
+		spdlog::set_pattern("[%b %d %H:%M:%S] [%l] %v");
+	}
 }
 
 RegeneratorModel::~RegeneratorModel()
 {
 	spdlog::get("logger")->flush();
+	spdlog::drop("logger");
 }
 
 void RegeneratorModel::packedspheresNdFit(double Re, double * f, double * j_H)
@@ -114,7 +114,7 @@ void RegeneratorModel::packedspheresFitCO2(double m_dot, double d, double A_fr, 
 	*DP = f_p * rho * pow(V, 2) * L / d / 1000.0; //Pa to kPa
 }
 
-void RegeneratorModel::CalculateThermoAndPhysicalModels()
+void RegeneratorModel::calculateModel()
 {
 	//							[SECTION 1]
 	//Pressure at hot exit
@@ -283,20 +283,21 @@ void RegeneratorModel::calculateCost()
 	costModule = costMaterial + priceCasting + priceCastingSteel + priceWelding;
 }
 
-void RegeneratorModel::setInletStates(double T_H_in, double P_H, double T_C_in, double P_C)
+void RegeneratorModel::setInletStates(double T_H_in, double P_H, double m_dot_H, double T_C_in, double P_C, double m_dot_C)
 {
 	this->T_H_in = T_H_in;
 	this->P_H = P_H;
+	this->m_dot_H = m_dot_H;
 	this->T_C_in = T_C_in;
 	this->P_C = P_C;
+	this->m_dot_C = m_dot_C;
 
-	//LOG << "Inlet states are set. T_H_in = " << this->T_H_in << ", P_H = " << this->P_H << ", T_C_in = " << this->T_C_in << ", P_C = " << this->P_C << endl;
+	//spdlog::get("logger")->info("Set inlet states: T_H_in = " + std::to_string(T_H_in) + ", P_H = " + std::to_string(P_H) 
+		//+ ", m_dot_H = " + std::to_string(m_dot_H) + ", T_C_in = " + std::to_string(T_C_in) + ", P_C = " + std::to_string(P_C) + ", m_dot_C = " + std::to_string(m_dot_C));
 }
 
-void RegeneratorModel::setParameters(double m_dot_H, double m_dot_C, double Q_dot_loss, double P_0, double D_s, double e_v)
+void RegeneratorModel::setParameters(double Q_dot_loss, double P_0, double D_s, double e_v)
 {
-	this->m_dot_H = m_dot_H;
-	this->m_dot_C = m_dot_C;
 	this->Q_dot_loss = Q_dot_loss;
 	this->P_0 = P_0;
 	this->D_s = D_s;
@@ -305,9 +306,8 @@ void RegeneratorModel::setParameters(double m_dot_H, double m_dot_C, double Q_do
 	numberOfCycles = 1.2 * operationYears * 365 * operationHoursPerDay * 60 * 60 / P_0;
 	stressAmplitude = fatigueTable->getValue("Sa", "N", numberOfCycles) * 6.89475729; //Convert ksi to MPA
 
-	//LOG << "Regenerator parameters are set. operationMode = " << this->operationMode << ", m_dot_H = " << this->m_dot_H << ", m_dot_C = " << this->m_dot_C;
-	//LOG << ", Q_dot_loss = " << this->Q_dot_loss << ", P_0 = " << this->P_0 << ", D_s = " << this->D_s << ", e_v = " << this->e_v;
-	//LOG << endl;
+	//spdlog::get("logger")->info("Set parameters: Q_dot_loss = " + std::to_string(Q_dot_loss) + ", P_0 = " + std::to_string(P_0) + ", D_s = " + std::to_string(D_s) 
+		//																														+ ", e_v = " + std::to_string(e_v));
 }
 
 void RegeneratorModel::setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max)
@@ -316,8 +316,7 @@ void RegeneratorModel::setDesignTargets(targetModes::targetModes targetMode, dou
 	this->targetMode = targetMode;
 	this->targetParameter = targetParameter;
 
-	//LOG << "Design targets are set. targetdP_max = " << this->targetdP_max << ", targetMode = " << this->targetMode << ", targetParameter = " << this->targetParameter;
-	//LOG << endl;
+	//spdlog::get("logger")->info("Design targets: targetdP_max = " + std::to_string(targetdP_max) + ", targetMode = " + std::to_string(targetMode) + ", targetParameter = " + std::to_string(targetParameter));
 }
 
 int RegeneratorModel::balanceHeatTransfer_Equation(double T_H_out, double * QdotAsDifference) {
@@ -325,7 +324,7 @@ int RegeneratorModel::balanceHeatTransfer_Equation(double T_H_out, double * Qdot
 	this->T_H_out = T_H_out;
 
 	try {
-		CalculateThermoAndPhysicalModels();
+		calculateModel();
 	}
 	catch (const invalid_argument& e) {
 		return -1;
@@ -365,8 +364,8 @@ int RegeneratorModel::solveForL_Equation(double L, double * dP_max)
 
 	int status = balanceColdPressureDrop->solve();
 
-	spdlog::get("logger")->debug("\tL = " + std::to_string(L) + " epsilon -> " + std::to_string(epsilon) + " ua -> " + std::to_string(UA)
-		+ " dP_max -> " + std::to_string(this->dP_max) + " status  -> " + std::to_string(status));
+	//spdlog::get("logger")->debug("\tL = " + std::to_string(L) + " epsilon -> " + std::to_string(epsilon) + " ua -> " + std::to_string(UA)
+		//+ " dP_max -> " + std::to_string(this->dP_max) + " status  -> " + std::to_string(status));
 	
 
 	if (status != C_monotonic_eq_solver::CONVERGED) {
@@ -382,12 +381,12 @@ int RegeneratorModel::solveForDfr_Equation(double D_fr, double * targetParameter
 {
 	this->D_fr = D_fr;
 
-	spdlog::get("logger")->debug(" --> Entered with D_fr = " + std::to_string(D_fr));
+	//spdlog::get("logger")->debug(" --> Entered with D_fr = " + std::to_string(D_fr));
 
 	int status = solveForL->solve();
 
-	spdlog::get("logger")->debug("\tepsilon -> " + std::to_string(epsilon) + +" ua -> " + std::to_string(UA) +
-		" dP_max -> " + std::to_string(this->dP_max) + " status  -> " + std::to_string(status));
+	//spdlog::get("logger")->debug("\tepsilon -> " + std::to_string(epsilon) + +" ua -> " + std::to_string(UA) +
+	//	" dP_max -> " + std::to_string(this->dP_max) + " status  -> " + std::to_string(status));
 
 
 	if (status != C_monotonic_eq_solver::CONVERGED) {
@@ -567,6 +566,9 @@ int RegeneratorModel::solveSystem()
 		calculateCost();
 		return 1;
 	}
+
+	spdlog::get("logger")->critical("Did not solve! TargetMode = " + std::to_string(targetMode) +
+		", Target = " + std::to_string(targetParameter));
 
 	return -1;
 }

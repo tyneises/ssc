@@ -7,12 +7,12 @@
 using namespace std;
 
 /*!
-*  \brief     Regenerative heat exchanger class.
-*  \details   How to use: 1) Create an instance of the class. 2) Set inlet parameters using setInletState() method. 3) Set heat exchanger parameters with setParameters().
-*				4) Set design targets with setDesignTargets() method. Now it is ready to go.
-*  \author    Dmitrii Turygin 	https://github.com/tvdmitrii
-*  \version   1.0
-*  \date      1/1/2018
+  \brief     Regenerative heat exchanger class.
+  \details   How to use: 1) Create an instance of the class. 2) Set heat exchanger parameters with setParameters(). 3) Set inlet parameters using setInletState() 
+				4) Set design targets with setDesignTargets() method. Now it is ready to go.
+  \author    Dmitrii Turygin 	https://github.com/tvdmitrii
+  \version   2.0
+  \date      1/21/2018
 */
 class RegenHX
 {
@@ -36,69 +36,67 @@ private:
 	double D_fr;
 	double wallThickness;
 
-	/*! \brief Number of hot+cold sets in heat exchenger. [-]
-	*	
-	*	Heat exchanger needs two bed modules. One for hot flow and one for cold flow.
-	*	Hot flow + cold flow modules form a set.
-	*	\sa stressAmplitude, wallThickness, calculateWallThickness(), D_fr, D_shell
+	/*! \brief Number of (hot module + cold module) sets in heat exchenger. [-]
+		
+		Heat exchanger needs two modules. One for the hot flow and one for cold flow.
+		Hot flow + cold flow modules form a set.
+		Usually number of sets is 2.
+		\sa operationModes
 	*/
 	int numberOfSets = 2;
 
-	/*! \brief Sets bed operation mode. [-]
-	*
-	*	Two available options are either 'redundant' or 'parallel'.
-	*	'redundant' - each hot and cold modules can handle full mass-flow and only one set out of
-	*	numberOfSets operates at a time.
-	*
-	*	'parallel' - massflow is split equally between all numberOfSets
-	*	\sa stressAmplitude, wallThickness, calculateWallThickness(), D_fr, D_shell, numberOfSets
+	/*! \brief Sets regenerator operation mode. See operationModes. [-]		
+		\sa operationModes
 	*/
 	operationModes::operationModes operationMode;
 
-	/*! \brief Number of bed modules that total (twice the number of numberOfSets). [-]
-	*
-	*	\sa stressAmplitude, wallThickness, calculateWallThickness(), D_fr, D_shell, numberOfSets
+	/*! \brief Number of modules total (twice the number of numberOfSets). [-]
+		\sa numberOfSets
 	*/
 	int numberOfModules = 2 * numberOfSets;
 
-	/*! \brief Total cost of the regenerative heat exchanger including static costs of welding and casting. [$]
-	*
-	*	Regenerative heat exchanger consists of numberOfModulesTotal bed modules.
-	*	\sa calculateCost(), costHXMaterial, costPerModuleTotal, costPerModuleMaterial
+	/*! \brief Total cost of the regenerator. [$]
+	
+		RegeneratorMModel::costModule * numberOfModulesTotal bed modules.
 	*/
 	double costHX;
 
+	void resetDesignStructure();
+
 public:
-	/*!	\brief Sets fluid state at hot and cold inlets
-	*
-	*	Without these values CalculateThermoAndPhysicalModels() cannot run.
-	*	\param T_H_in Temperature of fluid at hot inlet in [K]
-	*	\param P_H Pressure of fluid at hot inlet in [kPa]
-	*	\param T_C_in Temperature of fluid at cold inlet in [K]
-	*	\param P_C Pressure of fluid at cold inlet in [kPa]
-	*	\sa T_H_in, P_H, T_C_in, P_C, CalculateThermoAndPhysicalModels(), setParameters(), setParameters(), initialize(), setDesignTargets()
-	*/
-	void setInletStates(double T_H_in, double P_H, double T_C_in, double P_C);
 
-	/*!	\brief Sets flow and heat exchanger parameters
-	*
-	*	Without these values CalculateThermoAndPhysicalModels() cannot run.
-	*	\param operationMode Please see operationMode.
-	*	\param m_dot_H Mass flow rate of hot stream in [kg/s]
-	*	\param m_dot_C Mass flow rate of cold stream in [kg/s]
-	*	\param Q_dot_loss Heat loss rate of heat exchanger in [kW]
-	*	\param P_0 Switching period of heat exchanger in [s]. Deremines how often flows through beds is switched
-	*	\param D_s Diameter of spheres (particles) packed inside of the heat exchanger in [m]
-	*	\param e_v Porosity or ratio of empty space inside of the heat exchanger to its total volume
-	*	\sa m_dot_H, m_dot_C, Q_dot_loss, P_0, D_s, e_v, CalculateThermoAndPhysicalModels(), setguesses(), setInletState(), initialize(), setDesignTargets()
+	/*!	\brief Sets fluid states for hot and cold inlets
+		
+		Mass flows adjusted, depending on operationMode.
+		setParameters() prior to calling this method!
+		\param T_H_in Temperature of fluid at hot inlet in [K]
+		\param P_H Pressure of fluid at hot inlet in [kPa]
+		\param m_dot_H Mass flow rate of hot stream in [kg/s]
+		\param T_C_in Temperature of fluid at cold inlet in [K]
+		\param P_C Pressure of fluid at cold inlet in [kPa]
+		\param m_dot_C Mass flow rate of cold stream in [kg/s]
+		\sa setParameters(), setDesignTargets()
 	*/
-	void setParameters(operationModes::operationModes operationMode, double m_dot_H, double m_dot_C, double Q_dot_loss, double P_0, double D_s, double e_v);
+	void setInletStates(double T_H_in, double P_H, double m_dot_H, double T_C_in, double P_C, double m_dot_C);
 
-	/*!	\brief Sets design parameters such as dP_max and epsilon.
-	*
-	*	\param dP_max Target maximum pressure drop in the system in [kPa]
-	*	\param epsilon Target effectiveness of the system
-	*	\sa dP_max, epsilon, CalculateThermoAndPhysicalModels(), setParameters(), setInletState(), initialize(), setGuesses()
+	/*!	\brief Sets flow and regenerator parameters
+	
+		\param operationMode Please see operationMode.
+		\param Q_dot_loss Heat loss rate of heat exchanger in [kW]
+		\param P_0 Switching period of heat exchanger in [s]. Deremines how often flows through beds is switched
+		\param D_s Diameter of spheres (particles) packed inside of the heat exchanger in [m]
+		\param e_v Porosity or ratio of empty space inside of the heat exchanger to its total volume
+		\sa setInletState(), setDesignTargets()
+	*/
+	void setParameters(operationModes::operationModes operationMode, double Q_dot_loss, double P_0, double D_s, double e_v);
+
+	/*!	\brief Sets design parameters.
+	
+
+		\param targetMode Allows to choose between targetModes
+		\param targetParameter Can be either effectiveness, cost or UA, depending on targetMode parameter
+		\param dP_max Target maximum pressure drop in the system in [kPa]
+		\sa setParameters(), setInletState()
 	*/
 	void setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max);
 
