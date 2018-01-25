@@ -60,12 +60,12 @@ public:
 
 		equation = new C_member_mono_eq<T>(params->classInst, params->monoEquation);
 		eqSolver = new C_monotonic_eq_solver(*equation);
+		eqSolver->settings(tolerance, iterationLimit, lowerBound, upperBound, isErrorRel);
 	}
 	
 	int solve(double* tolSolved = nullptr)
 	{
 		eqSolver->reset();
-		eqSolver->settings(tolerance, iterationLimit, lowerBound, upperBound, isErrorRel);
 
 		double solution, toleranceSolved;
 		solution = toleranceSolved = numeric_limits<double>::quiet_NaN();

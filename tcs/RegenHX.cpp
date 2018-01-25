@@ -20,6 +20,7 @@ int RegenHX::solveSystem()
 {
 	RegeneratorSolution solution;
 	int status = regenModel->solveSystem();
+	//spdlog::get("logger")->info("Regenerator exited with status = " + std::to_string(status));
 	if (status < 0) {
 		return status;
 	}
@@ -41,7 +42,6 @@ int RegenHX::solveSystem()
 
 	if (operationMode == operationModes::PARALLEL) {
 		UA *= numberOfSets;
-		NTU_R_e *= numberOfSets;
 		Q_dot_a *= numberOfSets;
 	}
 
@@ -93,22 +93,32 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
 {
-	setInletStates(T_h_in, P_h_in, T_c_in, P_c_in);
 	double Q_dot_loss = 100;
 	double P_0 = 45;
 	double D_s = 0.003;
 	double e_v = 0.37;
 	double dP_max = P_h_in - P_h_out;
-	setParameters(operationModes::PARALLEL, m_dot_h, m_dot_c, Q_dot_loss, P_0, D_s, e_v);
+	if (dP_max < 220) {
+		dP_max = 220;
+	}
+
+	setParameters(operationModes::PARALLEL, Q_dot_loss, P_0, D_s, e_v);
+	setInletStates(T_h_in, P_h_in, m_dot_h, T_c_in, P_c_in, m_dot_c);
 	setDesignTargets(targetModes::UA, UA_target, dP_max);
 	
 	int status = solveSystem();
+
+	if (status < 0) {
+		resetDesignStructure();
+		return;
+	}
+
 	q_dot = Q_dot_a;
 	T_c_out = T_C_out;
 	T_h_out = T_H_out;
 
-	ms_des_solved.m_DP_cold_des = dP_C;
-	ms_des_solved.m_DP_hot_des = dP_H;
+	ms_des_solved.m_DP_cold_des = 0;
+	ms_des_solved.m_DP_hot_des = 0;
 	ms_des_solved.m_eff_design = epsilon;
 	//???
 	ms_des_solved.m_min_DT_design = min((T_H_in - T_H_out), (T_C_out - T_C_in));
@@ -146,24 +156,31 @@ void RegenHX::off_design_solution(double T_c_in, double P_c_in, double m_dot_c, 
 	ms_od_solved.m_UA_total = UA;*/
 }
 
-void RegenHX::setInletStates(double T_H_in, double P_H, double T_C_in, double P_C)
+void RegenHX::resetDesignStructure()
+{
+	ms_des_solved.m_DP_cold_des = ms_des_solved.m_DP_hot_des = ms_des_solved.m_eff_design = ms_des_solved.m_min_DT_design = ms_des_solved.m_NTU_design =
+		ms_des_solved.m_Q_dot_design = ms_des_solved.m_T_c_out = ms_des_solved.m_T_h_out = ms_des_solved.m_UA_design_total = std::numeric_limits<double>::quiet_NaN();
+}
+
+void RegenHX::setInletStates(double T_H_in, double P_H, double m_dot_H, double T_C_in, double P_C, double m_dot_C)
 {
 	this->T_C_in = T_C_in;
 	this->T_H_in = T_H_in;
-	regenModel->setInletStates(T_H_in, P_H, T_C_in, P_C);
-}
-
-void RegenHX::setParameters(operationModes::operationModes operationMode, double m_dot_H, double m_dot_C, double Q_dot_loss, double P_0, double D_s, double e_v)
-{
-	this->operationMode = operationMode;
 	this->m_dot_H = m_dot_H;
 	this->m_dot_C = m_dot_C;
+
 	if (this->operationMode == operationModes::PARALLEL) {
-		regenModel->setParameters(m_dot_H / numberOfSets, m_dot_C / numberOfSets, Q_dot_loss, P_0, D_s, e_v);
+		regenModel->setInletStates(T_H_in, P_H, m_dot_H / numberOfSets, T_C_in, P_C, m_dot_C / numberOfSets);
 	}
 	else {
-		regenModel->setParameters(m_dot_H, m_dot_C, Q_dot_loss, P_0, D_s, e_v);
+		regenModel->setInletStates(T_H_in, P_H, m_dot_H, T_C_in, P_C,  m_dot_C);
 	}
+}
+
+void RegenHX::setParameters(operationModes::operationModes operationMode, double Q_dot_loss, double P_0, double D_s, double e_v)
+{
+	this->operationMode = operationMode;
+	regenModel->setParameters(Q_dot_loss, P_0, D_s, e_v);
 }
 
 void RegenHX::setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max)
