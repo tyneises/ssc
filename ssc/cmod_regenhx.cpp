@@ -167,7 +167,7 @@ public:
 			}
 		}*/
 
-		costFile.flush();
+		/*costFile.flush();
 		costFile.close();
 
 		for (double eps = 0.987; eps <= 0.987; eps += 0.01) {
@@ -190,9 +190,9 @@ public:
 		}
 
 		epsilonFile.flush();
-		epsilonFile.close();
+		epsilonFile.close();*/
 
-		/*for (int ua = 300; ua <= 3500; ua += 100) {
+		for (int ua = 600; ua <= 3500; ua += 100) {
 
 			regenHot->setDesignTargets(targetModes::UA, ua, targetdP_max);
 
@@ -212,7 +212,7 @@ public:
 		}
 
 		uaFile.flush();
-		uaFile.close();*/
+		uaFile.close();
 	}
 
 };

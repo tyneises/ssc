@@ -93,6 +93,16 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
 {
+	if (UA_target < 1.E-10) {
+		q_dot = std::numeric_limits<double>::quiet_NaN();
+		T_c_out = T_c_in;
+		T_h_out = T_h_in;
+
+		resetDesignStructure();
+		return;
+	}
+
+
 	double Q_dot_loss = 100;
 	double P_0 = 45;
 	double D_s = 0.003;
@@ -110,6 +120,9 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 
 	if (status < 0) {
 		resetDesignStructure();
+		q_dot = std::numeric_limits<double>::quiet_NaN();
+		T_c_out = T_c_in;
+		T_h_out = T_h_in;
 		return;
 	}
 
@@ -120,9 +133,7 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	ms_des_solved.m_DP_cold_des = 0;
 	ms_des_solved.m_DP_hot_des = 0;
 	ms_des_solved.m_eff_design = epsilon;
-	//???
 	ms_des_solved.m_min_DT_design = min((T_H_in - T_H_out), (T_C_out - T_C_in));
-	//???
 	ms_des_solved.m_NTU_design = NTU_R_e;
 	ms_des_solved.m_Q_dot_design = Q_dot_a;
 	ms_des_solved.m_T_c_out = T_C_out;
