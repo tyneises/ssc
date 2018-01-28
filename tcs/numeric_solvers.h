@@ -86,6 +86,34 @@ public:
 	virtual int operator()(double x, double *y);
 };
 
+/*!	Allows to create C_monotonic_equation from a member function (method).
+		Constructor takes pointer to class instance and pointer to member function.
+		Member function should have this signature: int myMethod(double x, double* y);
+		Example:	MyClass myClass;
+					C_monotonic_equation myEq = C_member_mono_eq<MyClass>(*myClass, &MyClass::my_mono_equation_method);
+*/
+template <class T>
+class C_member_mono_eq : public C_monotonic_equation
+{
+
+private:
+	int (T::*mf_monotonic_function)(double x, double *y);
+
+	T* classInst;
+public:
+
+	C_member_mono_eq(T* classInst, int(T::*f)(double x, double *y))
+	{
+		this->classInst = classInst;
+		mf_monotonic_function = f;
+	}
+
+	~C_member_mono_eq() {}
+
+	virtual int operator()(double x, double *y) {
+		return (classInst->*mf_monotonic_function)(x, y);
+	}
+};
 
 class C_monotonic_eq_solver
 {
@@ -186,6 +214,11 @@ public:
 		MAX_ITER_SLOPE_NEG_BOTH_ERRS,
 	};
 	
+	/*! This method resets inner fields.
+		It has to be called after solve() methods, if you wish to run the solver again.
+	*/
+	void reset();
+
 	C_monotonic_eq_solver(C_monotonic_equation & f);
 
 	~C_monotonic_eq_solver(){}
