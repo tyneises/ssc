@@ -20,14 +20,13 @@ int RegenHX::solveSystem()
 {
 	RegeneratorSolution solution;
 	int status = regenModel->solveSystem();
-	//spdlog::get("logger")->info("Regenerator exited with status = " + std::to_string(status));
 	if (status < 0) {
 		return status;
 	}
 
 	regenModel->getSolution(&solution);
 
-	costHX = solution.costModule * numberOfModules;
+	costHX = solution.costModule;
 	T_H_out = solution.T_H_out;
 	T_C_out = solution.T_C_out;
 	dP_H = solution.dP_H;
@@ -41,8 +40,12 @@ int RegenHX::solveSystem()
 	wallThickness = solution.wallThickness;
 
 	if (operationMode == operationModes::PARALLEL) {
-		UA *= numberOfSets;
-		Q_dot_a *= numberOfSets;
+		costHX *= modulesInParallel;
+		UA *= modulesInParallel;
+		Q_dot_a *= modulesInParallel;
+	}
+	if (operationMode == operationModes::REDUNDANT) {
+		costHX *= 2;
 	}
 
 	return status;
@@ -112,7 +115,7 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 		dP_max = 220;
 	}
 
-	setParameters(operationModes::PARALLEL, Q_dot_loss, P_0, D_s, e_v);
+	setParameters(operationModes::REDUNDANT, Q_dot_loss, P_0, D_s, e_v);
 	setInletStates(T_h_in, P_h_in, m_dot_h, T_c_in, P_c_in, m_dot_c);
 	setDesignTargets(targetModes::UA, UA_target, dP_max);
 	
@@ -120,10 +123,8 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 
 	if (status < 0) {
 		resetDesignStructure();
-		q_dot = std::numeric_limits<double>::quiet_NaN();
-		T_c_out = T_c_in;
-		T_h_out = T_h_in;
-		return;
+		throw(C_csp_exception("RegenHX::design",
+			"Regenerator model failed!"));
 	}
 
 	q_dot = Q_dot_a;
@@ -181,7 +182,7 @@ void RegenHX::setInletStates(double T_H_in, double P_H, double m_dot_H, double T
 	this->m_dot_C = m_dot_C;
 
 	if (this->operationMode == operationModes::PARALLEL) {
-		regenModel->setInletStates(T_H_in, P_H, m_dot_H / numberOfSets, T_C_in, P_C, m_dot_C / numberOfSets);
+		regenModel->setInletStates(T_H_in, P_H, m_dot_H / modulesInParallel, T_C_in, P_C, m_dot_C / modulesInParallel);
 	}
 	else {
 		regenModel->setInletStates(T_H_in, P_H, m_dot_H, T_C_in, P_C,  m_dot_C);
@@ -196,13 +197,9 @@ void RegenHX::setParameters(operationModes::operationModes operationMode, double
 
 void RegenHX::setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max)
 {
-	if (targetMode == targetModes::UA && this->operationMode == operationModes::PARALLEL) {
-		regenModel->setDesignTargets(targetMode, targetParameter / numberOfSets, dP_max);
-	}
-	else if(targetMode == targetModes::COST && this->operationMode == operationModes::PARALLEL){
-		regenModel->setDesignTargets(targetMode, targetParameter / numberOfModules, dP_max);
-	}
-	else {
+	if (targetMode != targetModes::EPSILON && this->operationMode == operationModes::PARALLEL) {
+		regenModel->setDesignTargets(targetMode, targetParameter / modulesInParallel, dP_max);
+	} else {
 		regenModel->setDesignTargets(targetMode, targetParameter, dP_max);
 	}
 }

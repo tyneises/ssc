@@ -16,7 +16,8 @@ RegeneratorModel::RegeneratorModel()
 		spdlog::flush_on(spdlog::level::info);
 		spdlog::drop("logger");
 		spdlog::register_logger(logger);
-		spdlog::set_pattern("[%b %d %H:%M:%S] [%l] %v");
+		//spdlog::set_pattern("[%b %d %H:%M:%S] [%l] %v");
+		spdlog::set_pattern("%v");
 	}
 }
 
@@ -215,9 +216,9 @@ void RegeneratorModel::calculateModel()
 
 	A_s = 6.0 * (1.0 - e_v)*V_0 / D_s;
 
-	NTU_R = 1.0 / (C_dot_min*1000.0)*(1.0 / ((1.0 / (h_H*A_s)) + (1.0 / (h_C*A_s))));
+	UA = 2 * A_s * h_H * h_C / (h_H + h_C) / 1000.0;
 
-	UA = 1.0 / ((1.0 / (h_H*A_s)) + (1.0 / (h_C*A_s))) / 1000.0;
+	NTU_R = UA / C_dot_min;
 
 	f_0 = 1.0 / P_0;
 
@@ -228,7 +229,7 @@ void RegeneratorModel::calculateModel()
 	C_m_e = 2.0 * C_R*C_m / (1.0 + C_R);
 
 	try {
-		epsilon_1 = hx(NTU_R_e * 2, C_dot_min, C_m_e*C_dot_min);
+		epsilon_1 = hx(NTU_R_e, C_dot_min, C_m_e*C_dot_min);
 	}
 	catch (exception e) {
 		throw e;
@@ -263,9 +264,9 @@ void RegeneratorModel::calculateCost()
 	
 	solveForWallThickness->solve();
 
-	volumeShell = (PI * (pow(R_o, 2) - pow(R_i, 2)) * L + 4 / 3.0 * PI * (pow(R_o, 3) - pow(R_i, 3))); // a cylinder plus two half spheres
-	volumeInsulation = (PI * (pow(R_i, 2) - pow(R_i - insulationThickness, 2)) * L + 4 / 3.0 * PI * pow(R_i, 3)*insulationParameter);
-	volumeBed = V_0 * (1 - e_v);
+	volumeShell = 2 * (PI * (pow(R_o, 2) - pow(R_i, 2)) * L + 4 / 3.0 * PI * (pow(R_o, 3) - pow(R_i, 3))); // a cylinder plus two half spheres
+	volumeInsulation = 2* (PI * (pow(R_i, 2) - pow(R_i - insulationThickness, 2)) * L + 4 / 3.0 * PI * pow(R_i, 3)*insulationParameter);
+	volumeBed = 2* V_0 * (1 - e_v);
 
 	double shellMaterialDensity = shellMaterialTable->getValue("rho", "T", T_f);
 	double insulationMaterialDensity = insulationMaterialTable->getValue("rho", "T", T_f);
@@ -280,7 +281,7 @@ void RegeneratorModel::calculateCost()
 	costBedMaterial = specificCostBedMaterial * massBed;
 
 	costMaterial = costShellMaterial + costInsulationMaterial + costBedMaterial;
-	costModule = costMaterial + priceCasting + priceCastingSteel + priceWelding;
+	costModule = costMaterial + 2 * (priceCasting + priceCastingSteel + priceWelding);
 }
 
 void RegeneratorModel::setInletStates(double T_H_in, double P_H, double m_dot_H, double T_C_in, double P_C, double m_dot_C)
@@ -322,6 +323,10 @@ void RegeneratorModel::setDesignTargets(targetModes::targetModes targetMode, dou
 int RegeneratorModel::balanceHeatTransfer_Equation(double T_H_out, double * QdotAsDifference) {
 
 	this->T_H_out = T_H_out;
+
+	if (T_H_out > T_H_in) {
+		return -1;
+	}
 
 	try {
 		calculateModel();
@@ -479,7 +484,8 @@ int RegeneratorModel::solveSystem()
 	SolverParameters<RegeneratorModel> HT;
 	HT.solverName = "Balance Heat Tansfer";
 	HT.target = 0;
-	HT.guessValue1 = (T_C_in + T_H_in) * 0.5;		HT.guessValue2 = (T_C_in + T_H_in) * 0.7;
+	//HT.guessValue1 = (T_C_in + T_H_in) * 0.4;		HT.guessValue2 = (T_C_in + T_H_in) * 0.5;
+	HT.guessValue1 = T_C_in;		HT.guessValue2 = 500;
 	HT.lowerBound = N_co2_props::T_lower_limit;		HT.upperBound = N_co2_props::T_upper_limit;
 	HT.tolerance = 0.001;
 	HT.iterationLimit = 50;
@@ -560,15 +566,15 @@ int RegeneratorModel::solveSystem()
 	}
 	else if(toleranceD_fr <= 0.01){
 
-		spdlog::get("logger")->warn("Worse tolerance = " + std::to_string(toleranceD_fr) + " | TargetMode = " + std::to_string(targetMode) +
-			", Target = " + std::to_string(targetParameter));
+		//spdlog::get("logger")->warn("Worse tolerance = " + std::to_string(toleranceD_fr) + " | TargetMode = " + std::to_string(targetMode) +
+		//	", Target = " + std::to_string(targetParameter));
 
 		calculateCost();
 		return 1;
 	}
 
-	spdlog::get("logger")->critical("Did not solve! TargetMode = " + std::to_string(targetMode) +
-		", Target = " + std::to_string(targetParameter));
+	//spdlog::get("logger")->critical("Did not solve! TargetMode = " + std::to_string(targetMode) +
+	//	", Target = " + std::to_string(targetParameter));
 
 	return -1;
 }
