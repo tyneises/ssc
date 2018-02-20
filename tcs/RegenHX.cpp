@@ -115,7 +115,7 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 		dP_max = 220;
 	}
 
-	setParameters(operationModes::REDUNDANT, Q_dot_loss, P_0, D_s, e_v);
+	setParameters(operationModes::PARALLEL, Q_dot_loss, P_0, D_s, e_v);
 	setInletStates(T_h_in, P_h_in, m_dot_h, T_c_in, P_c_in, m_dot_c);
 	setDesignTargets(targetModes::UA, UA_target, dP_max);
 	
