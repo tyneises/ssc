@@ -52,14 +52,13 @@
 #include <algorithm>
 
 #include "nlopt.hpp"
+#include "fmin.h"
 
 int C_PartialCooling_Cycle::design(S_des_params & des_par_in)
 {
 	ms_des_par = des_par_in;
 
-	int des_err_code = design_core();
-
-	return des_err_code;
+	return design_core();
 }
 
 int C_PartialCooling_Cycle::design_core()
@@ -324,31 +323,20 @@ int C_PartialCooling_Cycle::C_MEQ_HTR_des::operator()(double T_HTR_LP_out /*K*/,
 	mpc_pc_cycle->m_entr_last[HTR_LP_OUT] = mpc_pc_cycle->mc_co2_props.entr;	//[kJ/kg-K]
 	mpc_pc_cycle->m_dens_last[HTR_LP_OUT] = mpc_pc_cycle->mc_co2_props.dens;	//[kg/m^3]
 
-	// ******************************************************************************
-	// ******************************************************************************
-	// Solve for the LTR solution
-	double T_LTR_LP_out_lower = mpc_pc_cycle->m_temp_last[MC_OUT];		//[K] Coldest possible outlet temperature
-	double T_LTR_LP_out_upper = mpc_pc_cycle->m_temp_last[HTR_LP_OUT];	//[K] Hottest possible outlet temperature
+	mpc_pc_cycle->mc_LTR.design_fix_UA_calc_outlet(mpc_pc_cycle->ms_des_par.m_UA_LTR, mpc_pc_cycle->ms_des_par.m_LTR_eff_max,
+		mpc_pc_cycle->m_temp_last[MC_OUT], mpc_pc_cycle->m_pres_last[MC_OUT], mpc_pc_cycle->m_m_dot_mc, mpc_pc_cycle->m_pres_last[LTR_HP_OUT],
+		mpc_pc_cycle->m_temp_last[HTR_LP_OUT], mpc_pc_cycle->m_pres_last[HTR_LP_OUT], mpc_pc_cycle->m_m_dot_t, mpc_pc_cycle->m_pres_last[LTR_LP_OUT],
+		m_Q_dot_LTR, mpc_pc_cycle->m_temp_last[LTR_HP_OUT], mpc_pc_cycle->m_temp_last[LTR_LP_OUT]);
 
-	double T_LTR_LP_out_guess_upper = std::min(T_LTR_LP_out_upper, T_LTR_LP_out_lower + 15.0);	//[K] there is nothing magic about using 15 here...
-	double T_LTR_LP_out_guess_lower = std::min(T_LTR_LP_out_guess_upper*0.99, T_LTR_LP_out_lower + 2.0);	//[K] there is nothing magic about using 2 here...
-
-	C_MEQ_LTR_des LTR_des_eq(mpc_pc_cycle);
-	C_monotonic_eq_solver LTR_des_solver(LTR_des_eq);
-
-	LTR_des_solver.settings(mpc_pc_cycle->ms_des_par.m_tol*mpc_pc_cycle->m_temp_last[MC_IN], 1000, T_LTR_LP_out_lower, T_LTR_LP_out_upper, false);
-
-	double T_LTR_LP_out_solved, tol_T_LTR_LP_out_solved;
-	T_LTR_LP_out_solved = tol_T_LTR_LP_out_solved = std::numeric_limits<double>::quiet_NaN();
-	int iter_T_LTR_LP_out = -1;
-
-	int T_LTR_LP_out_code = LTR_des_solver.solve(T_LTR_LP_out_guess_lower, T_LTR_LP_out_guess_upper, 0,
-		T_LTR_LP_out_solved, tol_T_LTR_LP_out_solved, iter_T_LTR_LP_out);
-
-	if (T_LTR_LP_out_code != C_monotonic_eq_solver::CONVERGED)
-		return 31;
-
-	m_Q_dot_LTR = LTR_des_eq.m_Q_dot_LTR;
+	prop_error_code = CO2_TP(mpc_pc_cycle->m_temp_last[LTR_LP_OUT], mpc_pc_cycle->m_pres_last[LTR_LP_OUT], &mpc_pc_cycle->mc_co2_props);
+	if (prop_error_code)
+	{
+		*diff_T_HTR_LP_out = std::numeric_limits<double>::quiet_NaN();
+		return prop_error_code;
+	}
+	mpc_pc_cycle->m_enth_last[LTR_LP_OUT] = mpc_pc_cycle->mc_co2_props.enth;	//[kJ/kg]
+	mpc_pc_cycle->m_entr_last[LTR_LP_OUT] = mpc_pc_cycle->mc_co2_props.entr;	//[kJ/kg-K]
+	mpc_pc_cycle->m_dens_last[LTR_LP_OUT] = mpc_pc_cycle->mc_co2_props.dens;	//[kg/m^3]
 
 	// *****************************************************************************
 		// Energy balance on the LTR HP stream
@@ -442,6 +430,39 @@ int C_PartialCooling_Cycle::C_MEQ_LTR_des::operator()(double T_LTR_LP_out /*K*/,
 	*diff_T_LTR_LP_out = T_LTR_LP_out_calc - mpc_pc_cycle->m_temp_last[LTR_LP_OUT];
 
 	return 0;
+}
+
+double C_PartialCooling_Cycle::opt_eta_fixed_P_high(double P_high_opt /*kPa*/)
+{
+	// Complete 'ms_opt_des_par'
+	ms_opt_des_par.m_P_mc_out_guess = P_high_opt;	//[kPa]
+	ms_opt_des_par.m_fixed_P_mc_out = true;
+
+	ms_opt_des_par.m_fixed_PR_total = false;
+	ms_opt_des_par.m_PR_total_guess = 25. / 6.5;	//[-] Guess could be improved...
+
+	ms_opt_des_par.m_fixed_f_PR_mc = false;
+	ms_opt_des_par.m_f_PR_mc_guess = (25. - 8.5) / (25. - 6.5);		//[-] Guess could be improved...
+
+	ms_opt_des_par.m_recomp_frac_guess = 0.25;	//[-]
+	ms_opt_des_par.m_fixed_recomp_frac = false;
+
+	ms_opt_des_par.m_LTR_frac_guess = 0.5;		//[-]
+	ms_opt_des_par.m_fixed_LTR_frac = false;
+
+	int pc_error_code = opt_design_core();
+
+	double local_objective_metric = 0.0;
+	if (pc_error_code == 0)
+		local_objective_metric = m_objective_metric_opt;
+
+	if (pc_error_code == 0 && m_objective_metric_opt > m_objective_metric_auto_opt)
+	{
+		ms_des_par_auto_opt = ms_des_par_optimal;
+		m_objective_metric_auto_opt = m_objective_metric_opt;
+	}
+
+	return -local_objective_metric;
 }
 
 int C_PartialCooling_Cycle::finalize_design()
@@ -772,6 +793,90 @@ int C_PartialCooling_Cycle::opt_design(S_opt_des_params & opt_des_par_in)
 	return finalize_design();
 }
 
+int C_PartialCooling_Cycle::auto_opt_design(S_auto_opt_design_parameters & auto_opt_des_par_in)
+{
+	ms_auto_opt_des_par = auto_opt_des_par_in;
+
+	return auto_opt_design_core();
+}
+
+int C_PartialCooling_Cycle::auto_opt_design_core()
+{
+	// map 'auto_opt_des_par_in' to 'ms_auto_opt_des_par'
+	ms_opt_des_par.m_W_dot_net = ms_auto_opt_des_par.m_W_dot_net;	//[kWe]
+	ms_opt_des_par.m_T_mc_in = ms_auto_opt_des_par.m_T_mc_in;		//[K]
+	ms_opt_des_par.m_T_pc_in = ms_auto_opt_des_par.m_T_pc_in;		//[K]
+	ms_opt_des_par.m_T_t_in = ms_auto_opt_des_par.m_T_t_in;			//[K]
+	ms_opt_des_par.m_DP_LTR = ms_auto_opt_des_par.m_DP_LTR;			        //(cold, hot) positive values are absolute [kPa], negative values are relative (-)
+	ms_opt_des_par.m_DP_HTR = ms_auto_opt_des_par.m_DP_HTR;				    //(cold, hot) positive values are absolute [kPa], negative values are relative (-)
+	ms_opt_des_par.m_DP_PC_full = ms_auto_opt_des_par.m_DP_PC_full;		    //(cold, hot) positive values are absolute [kPa], negative values are relative (-)
+	ms_opt_des_par.m_DP_PC_partial = ms_auto_opt_des_par.m_DP_PC_partial;   //(cold, hot) positive values are absolute [kPa], negative values are relative (-)
+	ms_opt_des_par.m_DP_PHX = ms_auto_opt_des_par.m_DP_PHX;				    //(cold, hot) positive values are absolute [kPa], negative values are relative (-)
+	ms_opt_des_par.m_UA_rec_total = ms_auto_opt_des_par.m_UA_rec_total;		//[kW/K]
+	ms_opt_des_par.m_LTR_eff_max = ms_auto_opt_des_par.m_LTR_eff_max;		//[-]
+	ms_opt_des_par.m_HTR_eff_max = ms_auto_opt_des_par.m_HTR_eff_max;		//[-]
+	ms_opt_des_par.m_eta_mc = ms_auto_opt_des_par.m_eta_mc;					//[-]
+	ms_opt_des_par.m_eta_rc = ms_auto_opt_des_par.m_eta_rc;					//[-]
+	ms_opt_des_par.m_eta_pc = ms_auto_opt_des_par.m_eta_pc;					//[-]
+	ms_opt_des_par.m_eta_t = ms_auto_opt_des_par.m_eta_t;					//[-]
+	ms_opt_des_par.m_N_sub_hxrs = ms_auto_opt_des_par.m_N_sub_hxrs;			//[-]
+	ms_opt_des_par.m_P_high_limit = ms_auto_opt_des_par.m_P_high_limit;		//[kPa]
+	ms_opt_des_par.m_tol = ms_auto_opt_des_par.m_tol;						//[-]
+	ms_opt_des_par.m_opt_tol = ms_auto_opt_des_par.m_opt_tol;				//[-]
+	ms_opt_des_par.m_N_turbine = ms_auto_opt_des_par.m_N_turbine;			//[rpm] Turbine shaft speed (negative values link turbine to compressor)
+
+	ms_opt_des_par.m_des_objective_type = ms_auto_opt_des_par.m_des_objective_type;	//[-]
+	ms_opt_des_par.m_min_phx_deltaT = ms_auto_opt_des_par.m_min_phx_deltaT;			//[C]
+
+	// Outer optimization loop
+	m_objective_metric_auto_opt = 0.0;
+
+	double P_low_limit = std::min(ms_auto_opt_des_par.m_P_high_limit, std::max(10.E3, ms_auto_opt_des_par.m_P_high_limit*0.2));		//[kPa]
+	double best_P_high = fminbr(
+		P_low_limit, ms_auto_opt_des_par.m_P_high_limit, &fmin_cb_opt_partialcooling_des_fixed_P_high, this, 1.0);
+
+	// fminb_cb_opt_partialcooling_des_fixed_P_high should calculate:
+		// ms_des_par_optimal;
+		// m_eta_thermal_opt;
+
+		// Complete 'ms_opt_des_par'
+	ms_opt_des_par.m_P_mc_out_guess = ms_auto_opt_des_par.m_P_high_limit;	//[kPa]
+	ms_opt_des_par.m_fixed_P_mc_out = true;
+
+	ms_opt_des_par.m_fixed_PR_total = false;
+	ms_opt_des_par.m_PR_total_guess = 25. / 6.5;	//[-] Guess could be improved...
+
+	ms_opt_des_par.m_fixed_f_PR_mc = false;
+	ms_opt_des_par.m_f_PR_mc_guess = (25. - 8.5) / (25. - 6.5);		//[-] Guess could be improved...
+
+	ms_opt_des_par.m_recomp_frac_guess = 0.25;	//[-]
+	ms_opt_des_par.m_fixed_recomp_frac = false;
+
+	ms_opt_des_par.m_LTR_frac_guess = 0.5;		//[-]
+	ms_opt_des_par.m_fixed_LTR_frac = false;
+
+	int pc_error_code = opt_design_core();
+
+	if (pc_error_code == 0 && m_objective_metric_opt > m_objective_metric_auto_opt)
+	{
+		ms_des_par_auto_opt = ms_des_par_optimal;
+		m_objective_metric_auto_opt = m_objective_metric_opt;
+	}
+
+	ms_des_par = ms_des_par_auto_opt;
+
+	int pc_opt_des_error_code = design_core();
+
+	if (pc_opt_des_error_code != 0)
+	{
+		return pc_opt_des_error_code;
+	}
+
+	pc_opt_des_error_code = finalize_design();
+
+	return pc_opt_des_error_code;
+}
+
 double nlopt_cb_opt_partialcooling_des(const std::vector<double> &x, std::vector<double> &grad, void *data)
 {
 	C_PartialCooling_Cycle *frame = static_cast<C_PartialCooling_Cycle*>(data);
@@ -779,4 +884,11 @@ double nlopt_cb_opt_partialcooling_des(const std::vector<double> &x, std::vector
 		return frame->design_cycle_return_objective_metric(x);
 	else
 		return 0.0;
+}
+
+double fmin_cb_opt_partialcooling_des_fixed_P_high(double P_high /*kPa*/, void *data)
+{
+	C_PartialCooling_Cycle *frame = static_cast<C_PartialCooling_Cycle*>(data);
+
+	return frame->opt_eta_fixed_P_high(P_high);
 }

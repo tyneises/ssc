@@ -138,6 +138,7 @@
     <ClInclude Include="..\tcs\RegeneratorModel.h" />
     <ClInclude Include="..\tcs\RegenHX.h" />
     <ClInclude Include="..\tcs\sco2_cycle_components.h" />
+    <ClInclude Include="..\tcs\sco2_cycle_templates.h" />
     <ClInclude Include="..\tcs\sco2_partialcooling_cycle.h" />
     <ClInclude Include="..\tcs\sco2_pc_csp_int.h" />
     <ClInclude Include="..\tcs\sco2_power_cycle.h" />

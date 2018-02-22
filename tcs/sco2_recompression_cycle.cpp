@@ -2124,7 +2124,17 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	m_W_dot_net_last = w_mc*m_dot_mc + w_rc*m_dot_rc + w_t*m_dot_t;
 	m_eta_thermal_calc_last = m_W_dot_net_last / PHX_des_par.m_Q_dot_design;
 
-	m_objective_metric_last = m_eta_thermal_calc_last;
+	if (ms_des_par.m_des_objective_type == 2)
+	{
+		double phx_deltaT = m_temp_last[TURB_IN] - m_temp_last[HTR_HP_OUT];
+		double under_min_deltaT = std::max(0.0, ms_des_par.m_min_phx_deltaT - phx_deltaT);
+		double eta_deltaT_scale = std::exp(-under_min_deltaT);
+		m_objective_metric_last = m_eta_thermal_calc_last * eta_deltaT_scale;
+	}
+	else
+	{
+		m_objective_metric_last = m_eta_thermal_calc_last;
+	}
 
 	spdlog::get("logger")->info(m_objective_metric_last);
 	m_m_dot_mc = m_dot_mc;
@@ -2414,6 +2424,9 @@ void C_RecompCycle::opt_design_core(int & error_code)
 	ms_des_par.m_tol = ms_opt_des_par.m_tol;
 	ms_des_par.m_N_turbine = ms_opt_des_par.m_N_turbine;
 
+	ms_des_par.m_des_objective_type = ms_opt_des_par.m_des_objective_type;	//[-]
+	ms_des_par.m_min_phx_deltaT = ms_opt_des_par.m_min_phx_deltaT;			//[C]
+
 	// ms_des_par members to be defined by optimizer and set in 'design_point_eta':
 		// m_P_mc_in
 		// m_P_mc_out
@@ -2653,6 +2666,9 @@ void C_RecompCycle::auto_opt_design_core(int & error_code)
 	ms_opt_des_par.m_opt_tol = ms_auto_opt_des_par.m_opt_tol;
 	ms_opt_des_par.m_N_turbine = ms_auto_opt_des_par.m_N_turbine;
 
+	ms_opt_des_par.m_des_objective_type = ms_auto_opt_des_par.m_des_objective_type;	//[-]
+	ms_opt_des_par.m_min_phx_deltaT = ms_auto_opt_des_par.m_min_phx_deltaT;			//[C]
+
 	// Outer optimization loop
 	m_objective_metric_auto_opt = 0.0;
 
@@ -2769,6 +2785,9 @@ void C_RecompCycle::auto_opt_design_hit_eta(S_auto_opt_design_hit_eta_parameters
 	ms_auto_opt_des_par.m_opt_tol = auto_opt_des_hit_eta_in.m_opt_tol;					//[-] Optimization tolerance
 	ms_auto_opt_des_par.m_N_turbine = auto_opt_des_hit_eta_in.m_N_turbine;				//[rpm] Turbine shaft speed (negative values link turbine to compressor)
 	ms_auto_opt_des_par.m_is_recomp_ok = auto_opt_des_hit_eta_in.m_is_recomp_ok;		//[-] 1 = yes, 0 = no, other = invalid
+
+	ms_auto_opt_des_par.m_des_objective_type = auto_opt_des_hit_eta_in.m_des_objective_type;	//[-]
+	ms_auto_opt_des_par.m_min_phx_deltaT = auto_opt_des_hit_eta_in.m_min_phx_deltaT;			//[C]
 
 	ms_auto_opt_des_par.mf_callback_log = auto_opt_des_hit_eta_in.mf_callback_log;
 	ms_auto_opt_des_par.mp_mf_active = auto_opt_des_hit_eta_in.mp_mf_active;
@@ -3057,7 +3076,7 @@ int C_RecompCycle::C_MEQ_sco2_design_hit_eta__UA_total::operator()(double UA_rec
 }
 
 
-double C_RecompCycle::opt_eta_fixed_P_high(double P_high_opt)
+double C_RecompCycle::opt_eta_fixed_P_high(double P_high_opt /*kPa*/)
 {
 	double PR_mc_guess = 1.1;
 	if(P_high_opt > P_pseudocritical_1(ms_opt_des_par.m_T_mc_in))
@@ -3227,8 +3246,8 @@ void C_RecompCycle::finalize_design(int & error_code)
 	ms_des_solved.ms_mc_ms_des_solved = *m_mc_ms.get_design_solved();
 	ms_des_solved.ms_rc_ms_des_solved = *m_rc_ms.get_design_solved();
 	ms_des_solved.ms_t_des_solved = *m_t.get_design_solved();
-	ms_des_solved.ms_LT_recup_des_solved = mc_LT_recup.ms_des_solved;
-	ms_des_solved.ms_HT_recup_des_solved = mc_HT_recup.ms_des_solved;
+	ms_des_solved.ms_LTR_des_solved = mc_LT_recup.ms_des_solved;
+	ms_des_solved.ms_HTR_des_solved = mc_HT_recup.ms_des_solved;
 
 	// Set solved design point metrics
 	ms_des_solved.m_temp = m_temp_last;
@@ -3244,8 +3263,8 @@ void C_RecompCycle::finalize_design(int & error_code)
 	ms_des_solved.m_m_dot_t = m_m_dot_t;
 	ms_des_solved.m_recomp_frac = m_m_dot_rc / m_m_dot_t;
 
-	ms_des_solved.m_UA_LT = ms_des_par.m_UA_LT;
-	ms_des_solved.m_UA_HT = ms_des_par.m_UA_HT;
+	ms_des_solved.m_UA_LTR = ms_des_par.m_UA_LT;
+	ms_des_solved.m_UA_HTR = ms_des_par.m_UA_HT;
 
 }
 

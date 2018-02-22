@@ -51,6 +51,7 @@
 #define __SCO2_PC_CORE_
 
 #include "sco2_cycle_components.h"
+#include "sco2_cycle_templates.h"
 
 #include <limits>
 #include <vector>
@@ -66,7 +67,7 @@
 
 using namespace std;
 
-class C_RecompCycle
+class C_RecompCycle : public C_sco2_cycle_core
 {
 public:
 	
@@ -166,6 +167,9 @@ public:
 		double m_tol;						//[-] Convergence tolerance
 		double m_opt_tol;					//[-] Optimization tolerance
 		double m_N_turbine;					//[rpm] Turbine shaft speed (negative values link turbine to compressor)
+		
+		int m_des_objective_type;			//[2] = min phx deltat then max eta, [else] max eta
+		double m_min_phx_deltaT;			//[C]
 
 		double m_P_mc_out_guess;			//[kPa] Initial guess for main compressor outlet pressure
 		bool m_fixed_P_mc_out;				//[-] if true, P_mc_out is fixed at P_mc_out_guess
@@ -179,8 +183,7 @@ public:
 		double m_LT_frac_guess;				//[-] Initial guess for fraction of UA_rec_total that is in the low-temperature recuperator
 		bool m_fixed_LT_frac;				//[-] if true, LT_frac is fixed at LT_frac_guess
 
-		int m_des_objective_type;		//[2] = min phx deltat then max eta, [else] max eta
-		double m_min_phx_deltaT;		//[C]
+		
 
 		S_opt_design_parameters()
 		{
@@ -227,6 +230,9 @@ public:
 		double m_N_turbine;					//[rpm] Turbine shaft speed (negative values link turbine to compressor)
 		int m_is_recomp_ok;					//[-] 1 = yes, 0 = no, other = invalid
 
+		int m_des_objective_type;			//[2] = min phx deltat then max eta, [else] max eta
+		double m_min_phx_deltaT;			//[C]
+
 		double m_PR_mc_guess;				//[-] Initial guess for ratio of P_mc_out to P_mc_in
 		bool m_fixed_PR_mc;					//[-] if true, ratio of P_mc_out to P_mc_in is fixed at PR_mc_guess
 
@@ -244,6 +250,10 @@ public:
 			m_N_sub_hxrs = -1;
 
 			m_is_recomp_ok = -1;
+
+			// Default to standard optimization to maximize cycle efficiency
+			m_des_objective_type = 1;
+			m_min_phx_deltaT = 0.0;		//[C]
 
 			m_fixed_PR_mc = false;		//[-] If false, then should default to optimizing this parameter
 
@@ -324,36 +334,36 @@ public:
 		}
 	};
 
-	struct S_design_solved
-	{
-		std::vector<double> m_temp, m_pres, m_enth, m_entr, m_dens;		// thermodynamic states (K, kPa, kJ/kg, kJ/kg-K, kg/m3)
-		double m_eta_thermal;	//[-]
-		double m_W_dot_net;		//[kWe]
-		double m_m_dot_mc;		//[kg/s]
-		double m_m_dot_rc;		//[kg/s]
-		double m_m_dot_t;		//[kg/s]
-		double m_recomp_frac;	//[-]
-		double m_UA_LT;			//[kW/K]
-		double m_UA_HT;			//[kW/K]
+	//struct S_design_solved
+	//{
+	//	std::vector<double> m_temp, m_pres, m_enth, m_entr, m_dens;		// thermodynamic states (K, kPa, kJ/kg, kJ/kg-K, kg/m3)
+	//	double m_eta_thermal;	//[-]
+	//	double m_W_dot_net;		//[kWe]
+	//	double m_m_dot_mc;		//[kg/s]
+	//	double m_m_dot_rc;		//[kg/s]
+	//	double m_m_dot_t;		//[kg/s]
+	//	double m_recomp_frac;	//[-]
+	//	double m_UA_LT;			//[kW/K]
+	//	double m_UA_HT;			//[kW/K]
 
-		bool m_is_rc;
+	//	bool m_is_rc;
 
-		//C_compressor::S_design_solved ms_mc_des_solved;
-		C_comp_multi_stage::S_des_solved ms_mc_ms_des_solved;
-		//C_recompressor::S_design_solved ms_rc_des_solved;
-		C_comp_multi_stage::S_des_solved ms_rc_ms_des_solved;
-		C_turbine::S_design_solved ms_t_des_solved;
-		C_HX_counterflow::S_des_solved ms_LT_recup_des_solved;
-		C_HX_counterflow::S_des_solved ms_HT_recup_des_solved;
+	//	//C_compressor::S_design_solved ms_mc_des_solved;
+	//	C_comp_multi_stage::S_des_solved ms_mc_ms_des_solved;
+	//	//C_recompressor::S_design_solved ms_rc_des_solved;
+	//	C_comp_multi_stage::S_des_solved ms_rc_ms_des_solved;
+	//	C_turbine::S_design_solved ms_t_des_solved;
+	//	C_HX_counterflow::S_des_solved ms_LT_recup_des_solved;
+	//	C_HX_counterflow::S_des_solved ms_HT_recup_des_solved;
 
-		S_design_solved()
-		{
-			m_eta_thermal = m_W_dot_net = m_m_dot_mc = m_m_dot_rc = m_m_dot_t = m_recomp_frac = 
-				m_UA_LT = m_UA_HT = std::numeric_limits<double>::quiet_NaN();
+	//	S_design_solved()
+	//	{
+	//		m_eta_thermal = m_W_dot_net = m_m_dot_mc = m_m_dot_rc = m_m_dot_t = m_recomp_frac = 
+	//			m_UA_LT = m_UA_HT = std::numeric_limits<double>::quiet_NaN();
 
-			m_is_rc = true;
-		}
-	};
+	//		m_is_rc = true;
+	//	}
+	//};
 
 	struct S_od_turbo_bal_csp_par
 	{
@@ -611,7 +621,9 @@ private:
 	S_design_parameters ms_des_par;
 	S_opt_design_parameters ms_opt_des_par;
 	S_auto_opt_design_parameters ms_auto_opt_des_par;
-	S_design_solved ms_des_solved;
+	
+	//S_design_solved ms_des_solved;
+	
 	//S_od_turbo_bal_par ms_od_turbo_bal_par;
 	S_od_turbo_bal_csp_par ms_od_turbo_bal_csp_par;
 	S_od_turbo_bal_csp_solved ms_od_turbo_bal_csp_solved;
@@ -787,10 +799,10 @@ public:
 		return m_rc_ms.get_od_solved();
 	}
 
-	const S_design_solved * get_design_solved()
+	/*const S_design_solved * get_design_solved()
 	{
 		return &ms_des_solved;
-	}	
+	}*/	
 
 	const S_od_turbo_bal_csp_solved *get_od_turbo_bal_csp_solved()
 	{
@@ -1024,7 +1036,7 @@ public:
 	double design_cycle_return_objective_metric(const std::vector<double> &x);
 
 	// Called by 'fmin_callback_opt_eta', so needs to be public
-	double opt_eta_fixed_P_high(double P_high_opt);
+	double opt_eta_fixed_P_high(double P_high_opt /*kPa*/);
 
 	// Called by 'nlopt_cb_opt_od', so needs to be public
 	//double off_design_point_value(const std::vector<double> &x);

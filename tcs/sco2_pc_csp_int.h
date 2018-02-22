@@ -52,6 +52,8 @@
 
 //#include "sco2_pc_core.h"
 #include "sco2_recompression_cycle.h"
+#include "sco2_partialcooling_cycle.h"
+#include "sco2_cycle_templates.h"
 
 #include "heat_exchangers.h"
 #include "csp_solver_util.h"
@@ -81,6 +83,7 @@ public:
 		int m_design_method;			//[-] 1 = Specify efficiency, 2 = Specify total recup UA
 		double m_eta_thermal;			//[-] Cycle thermal efficiency
 		double m_UA_recup_tot_des;		//[kW/K] Total recuperator conductance
+		int m_cycle_config;				//[-] 2 = partial cooling, [else] = recompression
 
 		// Cycle design parameters
 		std::vector<double> m_DP_LT;		//(cold, hot) positive values are absolute [kPa], negative values are relative (-)
@@ -99,6 +102,9 @@ public:
 		double m_N_turbine;					//[rpm] Turbine shaft speed (negative values link turbine to compressor)
 		int m_is_recomp_ok;					//[-] 1 = yes, 0 = no, other = invalid
 
+		int m_des_objective_type;			//[2] = min phx deltat then max eta, [else] max eta
+		double m_min_phx_deltaT;			//[C]
+
 		double m_PR_mc_guess;				//[-] Initial guess for ratio of P_mc_out to P_mc_in
 		bool m_fixed_PR_mc;					//[-] if true, ratio of P_mc_out to P_mc_in is fixed at PR_mc_guess
 
@@ -113,6 +119,13 @@ public:
 		S_des_par()
 		{
 			m_hot_fl_code = m_design_method = m_N_sub_hxrs = -1;
+
+			// Default cycle config to recompression
+			m_cycle_config = 1;
+
+			// Default to standard optimization to maximize cycle efficiency
+			m_des_objective_type = 1;
+			m_min_phx_deltaT = 0.0;		//[C]
 
 			m_is_recomp_ok = -1;
 
@@ -262,6 +275,7 @@ private:
 	C_RecompCycle mc_rc_cycle;
 	C_HX_co2_to_htf mc_phx;
 	C_CO2_to_air_cooler mc_air_cooler;
+	C_PartialCooling_Cycle mc_partialcooling_cycle;
 
 	S_des_par ms_des_par;
 	C_RecompCycle::S_auto_opt_design_hit_eta_parameters ms_rc_cycle_des_par;
