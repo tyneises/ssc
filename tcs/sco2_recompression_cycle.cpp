@@ -2023,6 +2023,22 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	}
 
 
+
+
+
+
+
+	// Guess High Temp Carry-over
+
+
+
+
+
+
+
+
+
+
 	// ****************************************************
 	// ****************************************************
 	// Solve the recuperators
@@ -2049,6 +2065,20 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		error_code = 35;
 		return;
 	}
+
+
+
+
+
+
+	// Converge on carry-over guess
+
+
+
+
+
+
+
 
 	// Get information calculated in C_mono_eq_HTR_des
 	w_rc = HTR_des_eq.m_w_rc;
@@ -2162,6 +2192,11 @@ int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, doub
 	}
 
 	// Calculate the mass flow required to hit cycle target power
+		
+
+		// Add carry-over to turbine mass flow calculation
+
+
 	m_m_dot_t = mpc_rc_cycle->ms_des_par.m_W_dot_net / (m_w_mc*(1.0 - mpc_rc_cycle->ms_des_par.m_recomp_frac) + m_w_rc*mpc_rc_cycle->ms_des_par.m_recomp_frac + m_w_t);		//[kg/s]
 	if( m_m_dot_t < 0.0 )
 	{
@@ -2234,7 +2269,7 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	{
 		return 31;
 	}
-	  
+
 	// Get information set in the Monotonic Equation class
 	m_w_rc = LTR_des_eq.m_w_rc;
 	m_m_dot_t = LTR_des_eq.m_m_dot_t;
