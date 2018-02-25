@@ -444,14 +444,10 @@ private:
 	double vol_extra = 0.02551;
 
 	/*! \brief Carryover coefficient. [-]
-
+		An extra valve was added between high pressure bed and low pressure bed. It is opened to
+		equalize the pressure between them during switching. This reduces carryover by a factor of 2.
 	*/
 	double CO = 2;
-
-	/*! \brief Another carryover coefficient. [-]
-
-	*/
-	double f_co = 1;
 
 	/* \brief Carryover mass flow rate [kg/s]
 	*/
@@ -679,6 +675,10 @@ private:
 		\sa getpropsregenFitCO2(), packedspheresNdFit()
 	*/
 	void packedspheresFitCO2(double m_dot, double d, double A_fr, double L, double T, double P, double porosity, double* f, double* h, double* NTU, double* DP);
+
+	void modelInitialization();
+
+	
 
 	/*! \brief Model that describes the behaviour of the regenerator module during hot/cold cycle.
 	
