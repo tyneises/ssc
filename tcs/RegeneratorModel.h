@@ -438,6 +438,21 @@ private:
 	*/
 	double X;
 
+	/*! \brief Carryover volume. [m^3]
+		
+	*/
+	double vol_extra = 0.02551;
+
+	/*! \brief Carryover coefficient. [-]
+		An extra valve was added between high pressure bed and low pressure bed. It is opened to
+		equalize the pressure between them during switching. This reduces carryover by a factor of 2.
+	*/
+	double CO = 2;
+
+	/* \brief Carryover mass flow rate [kg/s]
+	*/
+	double comass = 0;
+
 	/*! \brief Number of cycles completed during operationYears of operationHoursPerDay operation. [-]
 		\sa stressAmplitude, wallThickness
 	*/
@@ -484,14 +499,6 @@ private:
 
 	//! Atmospheric pressure. [MPa]
 	double Patm = 0.101325;
-
-	//! High pressure experienced by the module
-	double P_high = 24.94;
-
-	/*! /breif Low pressure experienced by the module
-		Used to calculate stressAmplitude
-	*/
-	double P_low = 8.218;
 
 	/*! \brief Volume of the steel shell of the module. [m^3]
 		\sa calculateCost()
@@ -669,6 +676,10 @@ private:
 	*/
 	void packedspheresFitCO2(double m_dot, double d, double A_fr, double L, double T, double P, double porosity, double* f, double* h, double* NTU, double* DP);
 
+	void modelInitialization();
+
+	
+
 	/*! \brief Model that describes the behaviour of the regenerator module during hot/cold cycle.
 	
 		This method is thermodynamical core of the program, containing a full set of equations that describe this regenerative heat exchanger.
@@ -716,10 +727,32 @@ private:
 	*/
 	MonoSolver<RegeneratorModel>* solveForDfr;
 
+	/*! \brief TODO
+	
+	*/
+	MonoSolver<RegeneratorModel>* balanceCarryoverMass;
+
 	/*! \brief Monotonic equation solver that calculates wall thickness.
 		\sa solveForWallThickness_Equation
 	*/
 	MonoSolver<RegeneratorModel>* solveForWallThickness;
+
+	/* \breif Integrates D*dL assuming linear temperature distribution with respect to L.
+
+	*/
+	double densityIntegral(double T_low, double T_high, double P);
+
+	void calcComass();
+
+	void carryoverEnthDrop();
+
+	SolverParameters<RegeneratorModel> HT;
+	SolverParameters<RegeneratorModel> HPD;
+	SolverParameters<RegeneratorModel> CPD;
+	SolverParameters<RegeneratorModel> LS;
+	SolverParameters<RegeneratorModel> DS;
+	SolverParameters<RegeneratorModel> COMS;
+	SolverParameters<RegeneratorModel> WT;
 
 public:
 	RegeneratorModel();
@@ -765,6 +798,7 @@ public:
 	int balanceColdPressureDrop_Equation(double dP_C, double * dP_CsDifference);
 	int solveForL_Equation(double L, double * dP_max);
 	int solveForDfr_Equation(double D_fr, double * targetParameter);
+	int balanceCarryover_Equation(double comass, double * comass_difference);
 	int solveForWallThickness_Equation(double th, double * stressAmplitude);
 
 	int solveSystem();

@@ -43,17 +43,12 @@ private:
 		Usually number of sets is 2.
 		\sa operationModes
 	*/
-	int numberOfSets = 2;
+	int modulesInParallel = 2;
 
 	/*! \brief Sets regenerator operation mode. See operationModes. [-]		
 		\sa operationModes
 	*/
 	operationModes::operationModes operationMode;
-
-	/*! \brief Number of modules total (twice the number of numberOfSets). [-]
-		\sa numberOfSets
-	*/
-	int numberOfModules = 2 * numberOfSets;
 
 	/*! \brief Total cost of the regenerator. [$]
 	
@@ -119,6 +114,9 @@ public:
 	C_HX_counterflow::S_od_solved ms_od_solved;
 
 	void initialize(int N_sub_hx);
+
+	double getD_fr() { return D_fr; }
+	double getL() { return L; }
 
 	//! Constructor that calls RegenHX::loadTables()
 	RegenHX();
