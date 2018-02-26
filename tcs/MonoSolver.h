@@ -44,6 +44,8 @@ private:
 	C_monotonic_equation* equation;
 
 	C_monotonic_eq_solver* eqSolver;
+
+	bool inProgress;
 	
 public:
 	MonoSolver(SolverParameters<T>* params)
@@ -61,10 +63,22 @@ public:
 		equation = new C_member_mono_eq<T>(params->classInst, params->monoEquation);
 		eqSolver = new C_monotonic_eq_solver(*equation);
 		eqSolver->settings(tolerance, iterationLimit, lowerBound, upperBound, isErrorRel);
+
+		inProgress = false;
 	}
 	
+	void updateGuesses(double guess1, double guess2) {
+		if (inProgress) {
+			throw invalid_argument("Solver is currently running!");
+		}
+
+		guessValue1 = guess1;
+		guessValue2 = guess2;
+	}
+
 	int solve(double* tolSolved = nullptr)
 	{
+		inProgress = true;
 		eqSolver->reset();
 
 		double solution, toleranceSolved;
@@ -77,6 +91,7 @@ public:
 			*tolSolved = toleranceSolved;
 		}
 
+		inProgress = false;
 		return status;
 	}
 

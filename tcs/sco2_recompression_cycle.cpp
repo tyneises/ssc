@@ -1864,7 +1864,7 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	mc_LT_recup.initialize(ms_des_par.m_N_sub_hxrs);
 		// HTR
 	mc_HT_recup.initialize(ms_des_par.m_N_sub_hxrs);
-
+	
 	// Initialize a few variables
 	double m_dot_t, m_dot_mc, m_dot_rc, m_dot_carryover, Q_dot_LT, Q_dot_HT, UA_LT_calc, UA_HT_calc;
 	m_dot_t = m_dot_mc = m_dot_rc = m_dot_carryover = Q_dot_LT = Q_dot_HT = UA_LT_calc = UA_HT_calc = 0.0;
@@ -2103,8 +2103,6 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		m_objective_metric_last = m_eta_thermal_calc_last;
 	}
 
-	//spdlog::get("logger")->info(m_objective_metric_last);
-
 	m_m_dot_carryover = m_dot_carryover;
 	m_m_dot_mc = m_dot_mc;
 	m_m_dot_rc = m_dot_rc;
@@ -2341,8 +2339,6 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 
 	// Find the design solution of the HTR
 	double T_HTR_LP_out_calc = std::numeric_limits<double>::quiet_NaN();
-
-	//spdlog::get("logger")->info(mpc_rc_cycle->ms_des_par.m_UA_HT);
 
 	try
 	{

@@ -298,11 +298,6 @@ private:
 	//! Volume of regenerator in [m^3]
 	double V_0;
 
-	/*! \brief Flow switch frequency in [Hz]
-		\sa P_0
-	*/
-	double f_0;
-
 	//! Diameter of bed spheres in [m]
 	double D_s;
 
@@ -438,6 +433,21 @@ private:
 	*/
 	double X;
 
+	/*! \brief Carryover volume. [m^3]
+		
+	*/
+	double vol_extra = 0.02551;
+
+	/*! \brief Carryover coefficient. [-]
+		An extra valve was added between high pressure bed and low pressure bed. It is opened to
+		equalize the pressure between them during switching. This reduces carryover by a factor of 2.
+	*/
+	double CO = 2;
+
+	/* \brief Carryover mass flow rate [kg/s]
+	*/
+	double comass = 0;
+
 	/*! \brief Number of cycles completed during operationYears of operationHoursPerDay operation. [-]
 		\sa stressAmplitude, wallThickness
 	*/
@@ -484,14 +494,6 @@ private:
 
 	//! Atmospheric pressure. [MPa]
 	double Patm = 0.101325;
-
-	//! High pressure experienced by the module
-	double P_high = 24.94;
-
-	/*! /breif Low pressure experienced by the module
-		Used to calculate stressAmplitude
-	*/
-	double P_low = 8.218;
 
 	/*! \brief Volume of the steel shell of the module. [m^3]
 		\sa calculateCost()
@@ -669,6 +671,10 @@ private:
 	*/
 	void packedspheresFitCO2(double m_dot, double d, double A_fr, double L, double T, double P, double porosity, double* f, double* h, double* NTU, double* DP);
 
+	void massflowVariablesInit();
+
+	
+
 	/*! \brief Model that describes the behaviour of the regenerator module during hot/cold cycle.
 	
 		This method is thermodynamical core of the program, containing a full set of equations that describe this regenerative heat exchanger.
@@ -691,35 +697,64 @@ private:
 	//! Calculates cost of the regenerato module.
 	void calculateCost();
 
-	/*! \brief 5th, lowest monotonic equation solver in the chain.
-		\sa balanceHeatTransfer_Equation
+	/*! \brief Monotonic equation solver that balances total heat transfer by adjusting T_H_out.
+		\sa HeatTransfer_ME
 	*/
-	MonoSolver<RegeneratorModel>* balanceHeatTransfer;
+	MonoSolver<RegeneratorModel>* HeatTransfer;
 
-	/*! \brief 4th monotonic equation solver in the chain.
-		\sa balanceHotPressureDrop_Equation
+	/*! \brief Monotonic equation solver that calculates hot stream pressure drop.
+		\sa HotPressureDrop_ME
 	*/
-	MonoSolver<RegeneratorModel>* balanceHotPressureDrop;
+	MonoSolver<RegeneratorModel>* HotPressureDrop;
 
-	/*! \brief 3rd monotonic equation solver in the chain.
-		\sa balanceColdPressureDrop_Equation
+	/*! \brief Monotonic equation solver that calculates cold stream pressure drop.
+		\sa ColdPressureDrop_ME
 	*/
-	MonoSolver<RegeneratorModel>* balanceColdPressureDrop;
+	MonoSolver<RegeneratorModel>* ColdPressureDrop;
 
-	/*! \brief 2nd monotonic equation solver in the chain.
-		\sa solveForL_Equation
+	/*! \brief Monotonic equation solver that finds L that yields desired targetdP_max.
+		\sa Length_ME
 	*/
-	MonoSolver<RegeneratorModel>* solveForL;
+	MonoSolver<RegeneratorModel>* Length;
 
-	/*! \brief 1st, highest monotonic equation solver in the chain.
-		\sa solveForDfr_Equation
+	/*! \brief Monotonic equation solver that finds D_fr that hits targetParameter.
+		\sa Diameter_ME
 	*/
-	MonoSolver<RegeneratorModel>* solveForDfr;
+	MonoSolver<RegeneratorModel>* Diameter;
+
+	/*! \brief Monotonic equation solver that balances carryover mass flow and regenerator mass flow.
+		\sa CarryoverMassFlow_ME
+	*/
+	MonoSolver<RegeneratorModel>* CarryoverMassFlow;
 
 	/*! \brief Monotonic equation solver that calculates wall thickness.
-		\sa solveForWallThickness_Equation
+		\sa WallThickness_ME
 	*/
-	MonoSolver<RegeneratorModel>* solveForWallThickness;
+	MonoSolver<RegeneratorModel>* WallThickness;
+
+	/* \breif Integrates Density*dL of CO2 along the regenerator bed.
+		Linear temperature distribution with respect to L inside of the regenerator is assumed.
+	*/
+	double densityIntegral(double T_low, double T_high, double P);
+
+	/*	\brief Calculates carryover mass flow.
+		Steady state bypass flow from cold inlet to hot outlet.
+		\sa P_0
+	*/
+	void calcCarryoverMassFlow();
+
+	/*	\brief Calculates enthalpy drop that occurs at hot outlet due carryover mass flow.
+		Enthalpy drop occures, because carryover is a steady state bypass flow from cold inlet to hot outlet.
+	*/
+	void carryoverEnthDrop();
+
+	SolverParameters<RegeneratorModel> HeatTransfer_SP;
+	SolverParameters<RegeneratorModel> HotPressureDrop_SP;
+	SolverParameters<RegeneratorModel> ColdPressureDrop_SP;
+	SolverParameters<RegeneratorModel> Length_SP;
+	SolverParameters<RegeneratorModel> Diameter_SP;
+	SolverParameters<RegeneratorModel> CarryoverMassFlow_SP;
+	SolverParameters<RegeneratorModel> WallThickness_SP;
 
 public:
 	RegeneratorModel();
@@ -760,12 +795,13 @@ public:
 	*/
 	void setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max);
 
-	int balanceHeatTransfer_Equation(double T_H_out, double * QdotAsDifference);
-	int balanceHotPressureDrop_Equation(double dP_H, double * dP_HsDifference);
-	int balanceColdPressureDrop_Equation(double dP_C, double * dP_CsDifference);
-	int solveForL_Equation(double L, double * dP_max);
-	int solveForDfr_Equation(double D_fr, double * targetParameter);
-	int solveForWallThickness_Equation(double th, double * stressAmplitude);
+	int HeatTransfer_ME(double T_H_out, double * QdotAsDifference);
+	int HotPressureDrop_ME(double dP_H, double * dP_HsDifference);
+	int ColdPressureDrop_ME(double dP_C, double * dP_CsDifference);
+	int Length_ME(double L, double * dP_max);
+	int Diameter_ME(double D_fr, double * targetParameter);
+	int CarryoverMassFlow_ME(double comass, double * comass_difference);
+	int WallThickness_ME(double th, double * stressAmplitude);
 
 	int solveSystem();
 	void getSolution(RegeneratorSolution* solution);

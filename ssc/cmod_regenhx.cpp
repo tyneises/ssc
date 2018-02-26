@@ -138,12 +138,12 @@ public:
 
 		epsilonFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
 		costFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
-		uaFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
+		uaFile << "Epsilon,\tUA,\t\tNTU,\tD_fr,\tL,\t\tT_H_out,\tms" << endl;
 
 
-		RegenHX* regenHot = new RegenHX();
-		regenHot->setParameters(operationModes::PARALLEL, Q_dot_loss, P_0, D_s, e_v);
-		regenHot->setInletStates(T_H_in, P_H, m_dot_H, T_C_in, P_C, m_dot_C);
+		RegenHX* HT_regen = new RegenHX();
+		//C_HX_co2_to_co2* HT_regen = new C_HX_co2_to_co2();
+		//HT_regen->initialize(10);
 
 		double* results = new double[9];
 		char* output = new char[150];
@@ -151,10 +151,10 @@ public:
 
 		/*for (int cost = 135000; cost <= 220000; cost += 5000) {
 
-			regenHot->setDesignTargets(targetModes::COST, cost, targetdP_max);
+			HT_regen->setDesignTargets(targetModes::COST, cost, targetdP_max);
 
 			begin = clock();
-			if (regenHot->solveSystem(results) >= 0) {
+			if (HT_regen->solveSystem(results) >= 0) {
 				end = clock();
 				sprintf(output, "%.5f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.5f,\t%.5f,\t%.5f,\t\t%.0f",
 					results[0], results[1], results[2], results[3], results[4], results[5], results[6], results[7], results[8], double(end - begin) / CLOCKS_PER_SEC * 1000.0);
@@ -165,17 +165,17 @@ public:
 				end = clock();
 				costFile << "-, -, -, -, " << cost << ", -, -" << endl;
 			}
-		}*/
+		}
 
 		costFile.flush();
-		costFile.close();
+		costFile.close();*/
 
-		for (double eps = 0.987; eps <= 0.987; eps += 0.01) {
+		/*for (double eps = 0.987; eps <= .987; eps += 0.01) {
 
-			regenHot->setDesignTargets(targetModes::EPSILON, eps, targetdP_max);
+			HT_regen->setDesignTargets(targetModes::EPSILON, eps, targetdP_max);
 
 			begin = clock();
-			if (regenHot->solveSystem(results) >= 0) {
+			if (HT_regen->solveSystem(results) >= 0) {
 				end = clock();
 				sprintf(output, "%.5f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.5f,\t%.5f,\t%.5f,\t\t%.0f",
 					results[0], results[1], results[2], results[3], results[4], results[5], results[6], results[7], results[8], double(end - begin) / CLOCKS_PER_SEC * 1000.0);
@@ -190,29 +190,37 @@ public:
 		}
 
 		epsilonFile.flush();
-		epsilonFile.close();
+		epsilonFile.close();*/
 
-		/*for (int ua = 300; ua <= 3500; ua += 100) {
-
-			regenHot->setDesignTargets(targetModes::UA, ua, targetdP_max);
+		double q_dot, T_c_out, T_h_out;
+		
+		for (int ua = 100; ua <= 10000; ua += 100) {
+			q_dot = T_c_out = T_h_out = std::numeric_limits<double>::quiet_NaN();
 
 			begin = clock();
-			if (regenHot->solveSystem(results) >= 0) {
+			try {
+				HT_regen->design_fix_UA_calc_outlet(ua, 1, T_C_in, P_C, m_dot_C, P_C, T_H_in, P_H, m_dot_H, P_H, q_dot, T_c_out, T_h_out);
 				end = clock();
-				sprintf(output, "%.5f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.0f,\t%.0f,\t\t%.5f,\t%.5f,\t%.5f,\t\t%.0f",
-					results[0], results[1], results[2], results[3], results[4], results[5], results[6], results[7], results[8], double(end - begin) / CLOCKS_PER_SEC * 1000.0);
+				sprintf(output, "%.5f,\t%.0f,\t%.2f,\t%.2f,\t%.2f,\t%.0f,\t\t%.0f",
+					HT_regen->ms_des_solved.m_eff_design,
+					HT_regen->ms_des_solved.m_UA_design_total,
+					HT_regen->ms_des_solved.m_NTU_design,
+					HT_regen->getD_fr(),
+					HT_regen->getL(),
+					T_h_out,
+					double(end - begin) / CLOCKS_PER_SEC * 1000.0);
 				uaFile << output << endl;
 				uaFile.flush();
 			}
-			else {
+			catch(C_csp_exception &){
 				end = clock();
-				uaFile << "-, -, -, -, -, " << ua << ", -" << endl;
+				uaFile << "-, " << ua << ", -" << endl;
 				continue;
 			}
 		}
 
 		uaFile.flush();
-		uaFile.close();*/
+		uaFile.close();
 	}
 
 };

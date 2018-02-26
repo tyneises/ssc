@@ -1,7 +1,5 @@
 #include "RegenHX.h"
 
-//Root is at YOUR_SAM_DIR\ssc\examples
-
 RegenHX::RegenHX()
 {
 	regenModel = new RegeneratorModel();
@@ -20,14 +18,13 @@ int RegenHX::solveSystem()
 {
 	RegeneratorSolution solution;
 	int status = regenModel->solveSystem();
-	//spdlog::get("logger")->info("Regenerator exited with status = " + std::to_string(status));
 	if (status < 0) {
 		return status;
 	}
 
 	regenModel->getSolution(&solution);
 
-	costHX = solution.costModule * numberOfModules;
+	costHX = solution.costModule;
 	T_H_out = solution.T_H_out;
 	T_C_out = solution.T_C_out;
 	dP_H = solution.dP_H;
@@ -41,8 +38,12 @@ int RegenHX::solveSystem()
 	wallThickness = solution.wallThickness;
 
 	if (operationMode == operationModes::PARALLEL) {
-		UA *= numberOfSets;
-		Q_dot_a *= numberOfSets;
+		costHX *= modulesInParallel;
+		UA *= modulesInParallel;
+		Q_dot_a *= modulesInParallel;
+	}
+	if (operationMode == operationModes::REDUNDANT) {
+		costHX *= 2;
 	}
 
 	return status;
@@ -93,6 +94,16 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
 {
+	if (UA_target < 1.E-10) {
+		q_dot = std::numeric_limits<double>::quiet_NaN();
+		T_c_out = T_c_in;
+		T_h_out = T_h_in;
+
+		resetDesignStructure();
+		return;
+	}
+
+
 	double Q_dot_loss = 100;
 	double P_0 = 45;
 	double D_s = 0.003;
@@ -110,7 +121,8 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 
 	if (status < 0) {
 		resetDesignStructure();
-		return;
+		throw(C_csp_exception("RegenHX::design",
+			"Regenerator model failed!"));
 	}
 
 	q_dot = Q_dot_a;
@@ -120,9 +132,7 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	ms_des_solved.m_DP_cold_des = 0;
 	ms_des_solved.m_DP_hot_des = 0;
 	ms_des_solved.m_eff_design = epsilon;
-	//???
 	ms_des_solved.m_min_DT_design = min((T_H_in - T_H_out), (T_C_out - T_C_in));
-	//???
 	ms_des_solved.m_NTU_design = NTU_R_e;
 	ms_des_solved.m_Q_dot_design = Q_dot_a;
 	ms_des_solved.m_T_c_out = T_C_out;
@@ -170,7 +180,7 @@ void RegenHX::setInletStates(double T_H_in, double P_H, double m_dot_H, double T
 	this->m_dot_C = m_dot_C;
 
 	if (this->operationMode == operationModes::PARALLEL) {
-		regenModel->setInletStates(T_H_in, P_H, m_dot_H / numberOfSets, T_C_in, P_C, m_dot_C / numberOfSets);
+		regenModel->setInletStates(T_H_in, P_H, m_dot_H / modulesInParallel, T_C_in, P_C, m_dot_C / modulesInParallel);
 	}
 	else {
 		regenModel->setInletStates(T_H_in, P_H, m_dot_H, T_C_in, P_C,  m_dot_C);
@@ -185,13 +195,9 @@ void RegenHX::setParameters(operationModes::operationModes operationMode, double
 
 void RegenHX::setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max)
 {
-	if (targetMode == targetModes::UA && this->operationMode == operationModes::PARALLEL) {
-		regenModel->setDesignTargets(targetMode, targetParameter / numberOfSets, dP_max);
-	}
-	else if(targetMode == targetModes::COST && this->operationMode == operationModes::PARALLEL){
-		regenModel->setDesignTargets(targetMode, targetParameter / numberOfModules, dP_max);
-	}
-	else {
+	if (targetMode != targetModes::EPSILON && this->operationMode == operationModes::PARALLEL) {
+		regenModel->setDesignTargets(targetMode, targetParameter / modulesInParallel, dP_max);
+	} else {
 		regenModel->setDesignTargets(targetMode, targetParameter, dP_max);
 	}
 }
