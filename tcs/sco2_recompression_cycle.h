@@ -70,7 +70,7 @@ using namespace std;
 class C_RecompCycle : public C_sco2_cycle_core
 {
 public:
-	
+
 	enum E_cycle_state_points
 	{
 		// index values for c++ 0-based vectors for temperature, pressure, etc.
@@ -112,6 +112,7 @@ public:
 		std::vector<double> m_DP_PHX;		//(cold, hot) positive values are absolute [kPa], negative values are relative (-)
 		double m_UA_LT;						//[kW/K] UA in LTR
 		double m_UA_HT;						//[kW/K] UA in HTR
+		int m_HTR_tech_type;				//[-] 1: Counterflow PCHE, 2: Regenerator
 		double m_LT_eff_max;				//[-] Maximum allowable effectiveness in LT recuperator
 		double m_HT_eff_max;				//[-] Maximum allowable effectiveness in HT recuperator
 		double m_recomp_frac;				//[-] Fraction of flow that bypasses the precooler and the main compressor at the design point
@@ -131,6 +132,9 @@ public:
 			m_W_dot_net = m_T_mc_in = m_T_t_in = m_P_mc_in = m_P_mc_out = m_UA_LT = m_UA_HT = m_LT_eff_max = m_HT_eff_max = m_recomp_frac = 
 				m_eta_mc = m_eta_rc = m_eta_t = m_P_high_limit = m_tol = m_N_turbine = std::numeric_limits<double>::quiet_NaN();
 			m_N_sub_hxrs = -1;
+
+			// Default to PCHE for HTR
+			m_HTR_tech_type = 1;
 
 			// Default to standard optimization to maximize cycle efficiency
 			m_des_objective_type = 1;
@@ -639,7 +643,7 @@ private:
 	std::vector<double> m_temp_last, m_pres_last, m_enth_last, m_entr_last, m_dens_last;		// thermodynamic states (K, kPa, kJ/kg, kJ/kg-K, kg/m3)
 	double m_eta_thermal_calc_last;
 	double m_W_dot_net_last;
-	double m_m_dot_mc, m_m_dot_rc, m_m_dot_t;
+	double m_m_dot_mc, m_m_dot_rc, m_m_dot_t, m_m_dot_carryover;
 	double m_Q_dot_PHX, m_Q_dot_bypass, m_eta_bypass;
 	double m_W_dot_mc, m_W_dot_rc, m_W_dot_t, m_W_dot_mc_bypass;
 	double m_objective_metric_last;
@@ -709,7 +713,7 @@ public:
 		std::fill(m_temp_last.begin(), m_temp_last.end(), std::numeric_limits<double>::quiet_NaN());
 		m_pres_last = m_enth_last = m_entr_last = m_dens_last = m_temp_last;
 
-		m_eta_thermal_calc_last = m_m_dot_mc = m_m_dot_rc = m_m_dot_t = std::numeric_limits<double>::quiet_NaN();
+		m_eta_thermal_calc_last = m_m_dot_mc = m_m_dot_rc = m_m_dot_t = m_m_dot_carryover = std::numeric_limits<double>::quiet_NaN();
 		m_Q_dot_PHX = m_Q_dot_bypass = m_eta_bypass = std::numeric_limits<double>::quiet_NaN();
 		m_W_dot_mc = m_W_dot_rc = m_W_dot_t = m_W_dot_mc_bypass = std::numeric_limits<double>::quiet_NaN();
 		m_objective_metric_last = std::numeric_limits<double>::quiet_NaN();
@@ -949,11 +953,12 @@ public:
 		C_RecompCycle *mpc_rc_cycle;
 
 	public:
-		C_mono_eq_LTR_des(C_RecompCycle *pc_rc_cycle, double w_mc, double w_t)
+		C_mono_eq_LTR_des(C_RecompCycle *pc_rc_cycle, double w_mc, double w_t, double f_m_dot_HTR_HPin_carryover /*-*/)
 		{
 			mpc_rc_cycle = pc_rc_cycle;
 			m_w_mc = w_mc;
 			m_w_t = w_t;
+			m_f_m_dot_HTR_HPin_carryover = f_m_dot_HTR_HPin_carryover;
 		}
 	
 		// These values are calculated in the operator() method and need to be extracted from this class
@@ -961,7 +966,7 @@ public:
 		double m_w_rc, m_m_dot_t, m_m_dot_rc, m_m_dot_mc, m_Q_dot_LT;
 
 		// These values are passed in as arguments to Constructor call and should not be reset
-		double m_w_mc, m_w_t;
+		double m_w_mc, m_w_t, m_f_m_dot_HTR_HPin_carryover;
 
 		virtual int operator()(double T_LTR_LP_out /*K*/, double *diff_T_LTR_LP_out /*K*/);
 	};
@@ -990,13 +995,13 @@ public:
 		virtual int operator()(double T_HTR_LP_out_guess /*K*/, double *diff_T_HTR_LP_out /*K*/);
 	};
 
-	class C_mono_eq_HTR_des : public C_monotonic_equation
+	class C_MEQ_carryover_des : public C_monotonic_equation
 	{
 	private:
 		C_RecompCycle *mpc_rc_cycle;
 
 	public:
-		C_mono_eq_HTR_des(C_RecompCycle *pc_rc_cycle, double w_mc, double w_t)
+		C_MEQ_carryover_des(C_RecompCycle *pc_rc_cycle, double w_mc, double w_t)
 		{
 			mpc_rc_cycle = pc_rc_cycle;
 			m_w_mc = w_mc;
@@ -1005,10 +1010,37 @@ public:
 
 		// These values are calculated in the operator() method and need to be extracted from this class
 		//     after convergence
-		double m_w_rc, m_m_dot_t, m_m_dot_rc, m_m_dot_mc, m_Q_dot_LT, m_Q_dot_HT;
+		double m_w_rc, m_m_dot_t, m_m_dot_rc, m_m_dot_mc, m_m_dot_carryover;
+		double m_Q_dot_LT, m_Q_dot_HT;
 
 		// These values are passed in as arguments to Constructor call and should not be reset
 		double m_w_mc, m_w_t;
+
+		virtual int operator()(double f_m_dot_HTR_HPin_carryover_guess /*-*/, double *diff_f_m_dot_HTR_HPin_carryover /*-*/);
+	};
+
+	class C_mono_eq_HTR_des : public C_monotonic_equation
+	{
+	private:
+		C_RecompCycle *mpc_rc_cycle;
+
+	public:
+		C_mono_eq_HTR_des(C_RecompCycle *pc_rc_cycle, double w_mc, double w_t, double f_m_dot_HTR_HPin_carryover)
+		{
+			mpc_rc_cycle = pc_rc_cycle;
+			m_w_mc = w_mc;
+			m_w_t = w_t;
+			m_f_m_dot_HTR_HPin_carryover = f_m_dot_HTR_HPin_carryover;
+		}
+
+		// These values are calculated in the operator() method and need to be extracted from this class
+		//     after convergence
+		double m_w_rc, m_m_dot_t, m_m_dot_rc, m_m_dot_mc;
+		double m_Q_dot_LT, m_Q_dot_HT;
+		double m_diff_mdot_HTR_HPin_carryover;
+
+		// These values are passed in as arguments to Constructor call and should not be reset
+		double m_w_mc, m_w_t, m_f_m_dot_HTR_HPin_carryover;
 
 		virtual int operator()(double T_HTR_LP_out /*K*/, double *diff_T_HTR_LP_out /*K*/);	
 	};

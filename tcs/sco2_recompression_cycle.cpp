@@ -1866,8 +1866,8 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	mc_HT_recup.initialize(ms_des_par.m_N_sub_hxrs);
 	
 	// Initialize a few variables
-	double m_dot_t, m_dot_mc, m_dot_rc, Q_dot_LT, Q_dot_HT, UA_LT_calc, UA_HT_calc;
-	m_dot_t = m_dot_mc = m_dot_rc = Q_dot_LT = Q_dot_HT = UA_LT_calc = UA_HT_calc = 0.0;
+	double m_dot_t, m_dot_mc, m_dot_rc, m_dot_carryover, Q_dot_LT, Q_dot_HT, UA_LT_calc, UA_HT_calc;
+	m_dot_t = m_dot_mc = m_dot_rc = m_dot_carryover = Q_dot_LT = Q_dot_HT = UA_LT_calc = UA_HT_calc = 0.0;
 
 	m_temp_last[MC_IN] = ms_des_par.m_T_mc_in;
 	m_pres_last[MC_IN] = ms_des_par.m_P_mc_in;
@@ -2022,71 +2022,38 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		return;
 	}
 
+	C_MEQ_carryover_des carryover_des_eq(this, w_mc, w_t);
+	C_monotonic_eq_solver carryover_des_solver(carryover_des_eq);
 
+	double f_m_dot_HTR_HPin_carryover = 0.0;		//[-] Fraction of HTR HP inlet mass flow lost to carryover
 
-
-
-
-
-	// Guess High Temp Carry-over
-
-
-
-
-
-
-
-
-
-
-	// ****************************************************
-	// ****************************************************
-	// Solve the recuperators
-	double T_HTR_LP_out_lower = m_temp_last[MC_OUT];		//[K] Coldest possible temperature
-	double T_HTR_LP_out_upper = m_temp_last[TURB_OUT];		//[K] Hottest possible temperature
-	
-	double T_HTR_LP_out_guess_lower = min(T_HTR_LP_out_upper - 2.0, max(T_HTR_LP_out_lower + 15.0, 220.0 + 273.15));	//[K] There is nothing special about these guesses...
-	double T_HTR_LP_out_guess_upper = min(T_HTR_LP_out_guess_lower + 20.0, T_HTR_LP_out_upper - 1.0);	//[K] There is nothing special about these guesses, either...
-	
-	C_mono_eq_HTR_des HTR_des_eq(this, w_mc, w_t);
-	C_monotonic_eq_solver HTR_des_solver(HTR_des_eq);
-	
-	HTR_des_solver.settings(ms_des_par.m_tol*m_temp_last[MC_IN], 1000, T_HTR_LP_out_lower, T_HTR_LP_out_upper, false);
-	
-	double T_HTR_LP_out_solved, tol_T_HTR_LP_out_solved;
-	T_HTR_LP_out_solved = tol_T_HTR_LP_out_solved = std::numeric_limits<double>::quiet_NaN();
-	int iter_T_HTR_LP_out = -1;
-	
-	int T_HTR_LP_out_code = HTR_des_solver.solve(T_HTR_LP_out_guess_lower, T_HTR_LP_out_guess_upper, 0,
-								T_HTR_LP_out_solved, tol_T_HTR_LP_out_solved, iter_T_HTR_LP_out);
-	
-	if( T_HTR_LP_out_code != C_monotonic_eq_solver::CONVERGED )
+	if (ms_des_par.m_HTR_tech_type != 2)	// HTR is a regenerator
 	{
-		error_code = 35;
-		return;
+		double diff_f_m_dot_carryover_test = std::numeric_limits<double>::quiet_NaN();
+		error_code = carryover_des_solver.test_member_function(f_m_dot_HTR_HPin_carryover, &diff_f_m_dot_carryover_test);
+		if (error_code != 0)
+			return;
+
+		// Don't expect PCHE model to ever have carryover, but it won't hurt to check here?
+		if (fabs(diff_f_m_dot_carryover_test) > ms_des_par.m_tol)
+		{
+			error_code = -22;
+			return;
+		}
 	}
-
-
-
-
-
-
-	// Converge on carry-over guess
-
-
-
-
-
-
-
-
+	else	// m_HTR_tech_type == 2 == regenerator
+	{
+		double blah = 1.23;
+	}
+	
 	// Get information calculated in C_mono_eq_HTR_des
-	w_rc = HTR_des_eq.m_w_rc;
-	m_dot_t = HTR_des_eq.m_m_dot_t;
-	m_dot_rc = HTR_des_eq.m_m_dot_rc;
-	m_dot_mc = HTR_des_eq.m_m_dot_mc;
-	Q_dot_LT = HTR_des_eq.m_Q_dot_LT;
-	Q_dot_HT = HTR_des_eq.m_Q_dot_HT;
+	w_rc = carryover_des_eq.m_w_rc;
+	m_dot_t = carryover_des_eq.m_m_dot_t;
+	m_dot_rc = carryover_des_eq.m_m_dot_rc;
+	m_dot_mc = carryover_des_eq.m_m_dot_mc;
+	m_m_dot_carryover = carryover_des_eq.m_m_dot_carryover;
+	Q_dot_LT = carryover_des_eq.m_Q_dot_LT;
+	Q_dot_HT = carryover_des_eq.m_Q_dot_HT;
 
 	// State 5 can now be fully defined
 	m_enth_last[HTR_HP_OUT] = m_enth_last[MIXER_OUT] + Q_dot_HT / m_dot_t;						// Energy balance on cold stream of high-temp recuperator
@@ -2136,9 +2103,55 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		m_objective_metric_last = m_eta_thermal_calc_last;
 	}
 
+	m_m_dot_carryover = m_dot_carryover;
 	m_m_dot_mc = m_dot_mc;
 	m_m_dot_rc = m_dot_rc;
 	m_m_dot_t = m_dot_t;
+}
+
+int C_RecompCycle::C_MEQ_carryover_des::operator()(double f_m_dot_HTR_HPin_carryover_guess /*-*/, double *diff_f_m_dot_HTR_HPin_carryover /*-*/)
+{
+	m_w_rc = m_m_dot_t = m_m_dot_rc = m_m_dot_mc = m_m_dot_carryover = m_Q_dot_LT = m_Q_dot_HT = std::numeric_limits<double>::quiet_NaN();
+
+	// ****************************************************
+	// ****************************************************
+	// Solve the recuperators
+	double T_HTR_LP_out_lower = mpc_rc_cycle->m_temp_last[MC_OUT];		//[K] Coldest possible temperature
+	double T_HTR_LP_out_upper = mpc_rc_cycle->m_temp_last[TURB_OUT];		//[K] Hottest possible temperature
+
+	double T_HTR_LP_out_guess_lower = min(T_HTR_LP_out_upper - 2.0, max(T_HTR_LP_out_lower + 15.0, 220.0 + 273.15));	//[K] There is nothing special about these guesses...
+	double T_HTR_LP_out_guess_upper = min(T_HTR_LP_out_guess_lower + 20.0, T_HTR_LP_out_upper - 1.0);	//[K] There is nothing special about these guesses, either...
+
+	C_mono_eq_HTR_des HTR_des_eq(mpc_rc_cycle, m_w_mc, m_w_t, f_m_dot_HTR_HPin_carryover_guess);
+	C_monotonic_eq_solver HTR_des_solver(HTR_des_eq);
+
+	HTR_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol*mpc_rc_cycle->m_temp_last[MC_IN], 1000, T_HTR_LP_out_lower, T_HTR_LP_out_upper, false);
+
+	double T_HTR_LP_out_solved, tol_T_HTR_LP_out_solved;
+	T_HTR_LP_out_solved = tol_T_HTR_LP_out_solved = std::numeric_limits<double>::quiet_NaN();
+	int iter_T_HTR_LP_out = -1;
+
+	int T_HTR_LP_out_code = HTR_des_solver.solve(T_HTR_LP_out_guess_lower, T_HTR_LP_out_guess_upper, 0,
+		T_HTR_LP_out_solved, tol_T_HTR_LP_out_solved, iter_T_HTR_LP_out);
+
+	if (T_HTR_LP_out_code != C_monotonic_eq_solver::CONVERGED)
+	{
+		*diff_f_m_dot_HTR_HPin_carryover = std::numeric_limits<double>::quiet_NaN();
+		return 35;
+	}
+
+	// Get information calculated in C_mono_eq_HTR_des
+	m_w_rc = HTR_des_eq.m_w_rc;
+	m_m_dot_t = HTR_des_eq.m_m_dot_t;
+	m_m_dot_rc = HTR_des_eq.m_m_dot_rc;
+	m_m_dot_mc = HTR_des_eq.m_m_dot_mc;
+	m_m_dot_carryover = (m_m_dot_rc + m_m_dot_mc) - m_m_dot_t;		//[kg/s]
+	m_Q_dot_LT = HTR_des_eq.m_Q_dot_LT;
+	m_Q_dot_HT = HTR_des_eq.m_Q_dot_HT;
+
+	*diff_f_m_dot_HTR_HPin_carryover = HTR_des_eq.m_diff_mdot_HTR_HPin_carryover;
+
+	return 0;
 }
 
 int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, double *diff_T_LTR_LP_out /*K*/)
@@ -2200,20 +2213,18 @@ int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, doub
 		mpc_rc_cycle->m_dens_last[RC_OUT] = mpc_rc_cycle->m_dens_last[LTR_LP_OUT];
 	}
 
-	// Calculate the mass flow required to hit cycle target power
-		
+	double m_dot_HTR_in = mpc_rc_cycle->ms_des_par.m_W_dot_net / 
+		(m_w_mc*(1.0 - mpc_rc_cycle->ms_des_par.m_recomp_frac) + 
+			m_w_rc * mpc_rc_cycle->ms_des_par.m_recomp_frac + m_w_t*(1.0 - m_f_m_dot_HTR_HPin_carryover));		//[kg/s]
 
-		// Add carry-over to turbine mass flow calculation
-
-
-	m_m_dot_t = mpc_rc_cycle->ms_des_par.m_W_dot_net / (m_w_mc*(1.0 - mpc_rc_cycle->ms_des_par.m_recomp_frac) + m_w_rc*mpc_rc_cycle->ms_des_par.m_recomp_frac + m_w_t);		//[kg/s]
 	if( m_m_dot_t < 0.0 )
 	{
 		*diff_T_LTR_LP_out = std::numeric_limits<double>::quiet_NaN();
 		return 29;
 	}
-	m_m_dot_rc = m_m_dot_t * mpc_rc_cycle->ms_des_par.m_recomp_frac;		//[kg/s]
-	m_m_dot_mc = m_m_dot_t - m_m_dot_rc;
+	m_m_dot_t = m_dot_HTR_in*(1.0 - m_f_m_dot_HTR_HPin_carryover);		//[kg/s]
+	m_m_dot_rc = m_dot_HTR_in * mpc_rc_cycle->ms_des_par.m_recomp_frac;		//[kg/s]
+	m_m_dot_mc = m_dot_HTR_in - m_m_dot_rc;			//[kg/s]
 
 	double T_LTR_LP_out_calc = std::numeric_limits<double>::quiet_NaN();
 
@@ -2221,7 +2232,7 @@ int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, doub
 	{
 		mpc_rc_cycle->mc_LT_recup.design_fix_UA_calc_outlet(mpc_rc_cycle->ms_des_par.m_UA_LT, mpc_rc_cycle->ms_des_par.m_LT_eff_max,
 			mpc_rc_cycle->m_temp_last[MC_OUT], mpc_rc_cycle->m_pres_last[MC_OUT], m_m_dot_mc, mpc_rc_cycle->m_pres_last[LTR_HP_OUT],
-			mpc_rc_cycle->m_temp_last[HTR_LP_OUT], mpc_rc_cycle->m_pres_last[HTR_LP_OUT], m_m_dot_t, mpc_rc_cycle->m_pres_last[LTR_LP_OUT],
+			mpc_rc_cycle->m_temp_last[HTR_LP_OUT], mpc_rc_cycle->m_pres_last[HTR_LP_OUT], m_dot_HTR_in, mpc_rc_cycle->m_pres_last[LTR_LP_OUT],
 			m_Q_dot_LT, mpc_rc_cycle->m_temp_last[LTR_HP_OUT], T_LTR_LP_out_calc);
 	}
 	catch( C_csp_exception & )
@@ -2238,7 +2249,9 @@ int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, doub
 
 int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, double *diff_T_HTR_LP_out /*K*/)
 {
-	m_w_rc = m_m_dot_t = m_m_dot_rc = m_m_dot_mc = m_Q_dot_LT = m_Q_dot_HT = std::numeric_limits<double>::quiet_NaN();	
+	m_w_rc = m_m_dot_t = m_m_dot_rc = m_m_dot_mc = 
+		m_Q_dot_LT = m_Q_dot_HT =
+		m_diff_mdot_HTR_HPin_carryover = std::numeric_limits<double>::quiet_NaN();	
 
 	mpc_rc_cycle->m_temp_last[HTR_LP_OUT] = T_HTR_LP_out;		//[K]	
 
@@ -2261,7 +2274,7 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	double T_LTR_LP_out_guess_upper = min(T_LTR_LP_out_upper, T_LTR_LP_out_lower + 15.0);	//[K] There is nothing special about using 15 here...
 	double T_LTR_LP_out_guess_lower = min(T_LTR_LP_out_guess_upper*0.99, T_LTR_LP_out_lower + 2.0);	//[K] There is nothing special about using 2 here...
 
-	C_mono_eq_LTR_des LTR_des_eq(mpc_rc_cycle, m_w_mc, m_w_t);
+	C_mono_eq_LTR_des LTR_des_eq(mpc_rc_cycle, m_w_mc, m_w_t, m_f_m_dot_HTR_HPin_carryover);
 	C_monotonic_eq_solver LTR_des_solver(LTR_des_eq);
 
 	LTR_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol*mpc_rc_cycle->m_temp_last[MC_IN], 1000, T_LTR_LP_out_lower,
@@ -2285,6 +2298,9 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	m_m_dot_rc = LTR_des_eq.m_m_dot_rc;
 	m_m_dot_mc = LTR_des_eq.m_m_dot_mc;
 	m_Q_dot_LT = LTR_des_eq.m_Q_dot_LT;
+
+	// Calculate mass flow rate through HTR with consideration that it could include carry-over
+	double m_dot_HTR_in = m_m_dot_rc + m_m_dot_mc;		//[kg/s]
 
 	// Know LTR performance so we can calculate the HP outlet
 		// Energy balance on LTR HP stream
@@ -2327,8 +2343,8 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	try
 	{
 	mpc_rc_cycle->mc_HT_recup.design_fix_UA_calc_outlet(mpc_rc_cycle->ms_des_par.m_UA_HT, mpc_rc_cycle->ms_des_par.m_HT_eff_max,
-		mpc_rc_cycle->m_temp_last[MIXER_OUT], mpc_rc_cycle->m_pres_last[MIXER_OUT], m_m_dot_t, mpc_rc_cycle->m_pres_last[HTR_HP_OUT],
-		mpc_rc_cycle->m_temp_last[TURB_OUT], mpc_rc_cycle->m_pres_last[TURB_OUT], m_m_dot_t, mpc_rc_cycle->m_pres_last[HTR_LP_OUT],
+		mpc_rc_cycle->m_temp_last[MIXER_OUT], mpc_rc_cycle->m_pres_last[MIXER_OUT], m_dot_HTR_in, mpc_rc_cycle->m_pres_last[HTR_HP_OUT],
+		mpc_rc_cycle->m_temp_last[TURB_OUT], mpc_rc_cycle->m_pres_last[TURB_OUT], m_dot_HTR_in, mpc_rc_cycle->m_pres_last[HTR_LP_OUT],
 		m_Q_dot_HT, mpc_rc_cycle->m_temp_last[HTR_HP_OUT], T_HTR_LP_out_calc);
 	}
 	catch( C_csp_exception & )
@@ -2337,6 +2353,14 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 		return -1;
 	}
 	
+	// Calculate difference between calculated and guessed carry-over fractions
+		// Guess
+	double m_dot_carryover_guess = m_dot_HTR_in - m_m_dot_t;
+		// Calculated
+	double m_dot_carryover_calc = 0.0;		// Get this from HX soluation
+
+	m_diff_mdot_HTR_HPin_carryover = m_dot_carryover_calc - m_dot_carryover_guess;	//[kg/s]
+
 	*diff_T_HTR_LP_out = T_HTR_LP_out_calc - mpc_rc_cycle->m_temp_last[HTR_LP_OUT];		//[K]	
 
 	return 0;
