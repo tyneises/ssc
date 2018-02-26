@@ -1,7 +1,5 @@
 #include "RegenHX.h"
 
-//Root is at YOUR_SAM_DIR\ssc\examples
-
 RegenHX::RegenHX()
 {
 	regenModel = new RegeneratorModel();

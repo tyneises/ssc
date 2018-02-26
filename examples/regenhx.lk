@@ -3,8 +3,8 @@ var("inletStates.P_H", 8485);
 var("inletStates.T_C_in", 440.95);
 var("inletStates.P_C", 24940);
 
-var("parameters.m_dot_H", 79.73);
-var("parameters.m_dot_C", 79.73);
+var("parameters.m_dot_H", 81.5);
+var("parameters.m_dot_C", 81.5);
 var("parameters.Q_dot_loss", 100);
 var("parameters.P_0", 45);
 var("parameters.D_s", 0.003);

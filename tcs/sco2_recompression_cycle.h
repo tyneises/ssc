@@ -614,7 +614,7 @@ private:
 	
 	C_HX_co2_to_co2 mc_LT_recup;
 	C_HX_co2_to_co2 mc_HT_recup;
-	RegenHX mc_HT_recup1;
+	//RegenHX mc_HT_recup;
 	
 		// Input/Ouput structures for class methods
 	S_design_limits ms_des_limits;
