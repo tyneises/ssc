@@ -36,11 +36,13 @@ int RegenHX::solveSystem()
 	L = solution.L;
 	D_fr = solution.D_fr;
 	wallThickness = solution.wallThickness;
+	f_m_dot_carryover = solution.f_m_dot_carryover;
 
 	if (operationMode == operationModes::PARALLEL) {
 		costHX *= modulesInParallel;
 		UA *= modulesInParallel;
 		Q_dot_a *= modulesInParallel;
+		f_m_dot_carryover *= modulesInParallel;
 	}
 	if (operationMode == operationModes::REDUNDANT) {
 		costHX *= 2;
@@ -63,6 +65,7 @@ int RegenHX::solveSystem(double* results)
 		results[6] = -1;
 		results[7] = -1;
 		results[8] = -1;
+		results[9] = -1;
 
 		return status;
 	}
@@ -76,6 +79,7 @@ int RegenHX::solveSystem(double* results)
 	results[6] = D_fr;
 	results[7] = L;
 	results[8] = wallThickness;
+	results[9] = f_m_dot_carryover;
 
 	return status;
 }
@@ -95,7 +99,7 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
 {
 	if (UA_target < 1.E-10) {
-		q_dot = std::numeric_limits<double>::quiet_NaN();
+		q_dot = f_m_dot_carryover = std::numeric_limits<double>::quiet_NaN();
 		T_c_out = T_c_in;
 		T_h_out = T_h_in;
 
@@ -138,6 +142,7 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	ms_des_solved.m_T_c_out = T_C_out;
 	ms_des_solved.m_T_h_out = T_H_out;
 	ms_des_solved.m_UA_design_total = UA;
+	ms_des_solved.m_f_m_dot_carryover = f_m_dot_carryover;
 }
 
 void RegenHX::off_design_solution(double T_c_in, double P_c_in, double m_dot_c, double P_c_out, double T_h_in, double P_h_in, double m_dot_h, double P_h_out, double & q_dot, double & T_c_out, double & T_h_out)
@@ -169,7 +174,8 @@ void RegenHX::off_design_solution(double T_c_in, double P_c_in, double m_dot_c, 
 void RegenHX::resetDesignStructure()
 {
 	ms_des_solved.m_DP_cold_des = ms_des_solved.m_DP_hot_des = ms_des_solved.m_eff_design = ms_des_solved.m_min_DT_design = ms_des_solved.m_NTU_design =
-		ms_des_solved.m_Q_dot_design = ms_des_solved.m_T_c_out = ms_des_solved.m_T_h_out = ms_des_solved.m_UA_design_total = std::numeric_limits<double>::quiet_NaN();
+		ms_des_solved.m_Q_dot_design = ms_des_solved.m_T_c_out = ms_des_solved.m_T_h_out = ms_des_solved.m_UA_design_total = 
+		ms_des_solved.m_f_m_dot_carryover = std::numeric_limits<double>::quiet_NaN();
 }
 
 void RegenHX::setInletStates(double T_H_in, double P_H, double m_dot_H, double T_C_in, double P_C, double m_dot_C)

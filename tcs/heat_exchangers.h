@@ -234,12 +234,13 @@ public:
 		double m_T_c_out;				//[K] Design-point cold outlet temperature
 		double m_DP_cold_des;			//[kPa] cold fluid design pressure drop
 		double m_DP_hot_des;			//[kPa] hot fluid design pressure drop
+		double m_f_m_dot_carryover;			//[kg/s] Carryover massflow fraction. Only applicable to regenerator
 
 		S_des_solved()
 		{
 			m_Q_dot_design = m_UA_design_total = m_min_DT_design = m_eff_design = m_NTU_design =
 				m_T_h_out = m_T_c_out =
-				m_DP_cold_des = m_DP_hot_des = std::numeric_limits<double>::quiet_NaN();
+				m_DP_cold_des = m_DP_hot_des = m_f_m_dot_carryover = std::numeric_limits<double>::quiet_NaN();
 		}
 	};
 

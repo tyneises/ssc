@@ -35,6 +35,7 @@ private:
 	double L;
 	double D_fr;
 	double wallThickness;
+	double f_m_dot_carryover;
 
 	/*! \brief Number of (hot module + cold module) sets in heat exchenger. [-]
 		

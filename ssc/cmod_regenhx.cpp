@@ -136,9 +136,9 @@ public:
 		costFile.open("C:\\Users\\Dmitrii\\Desktop\\cost.txt");
 		uaFile.open("C:\\Users\\Dmitrii\\Desktop\\ua.txt");
 
-		epsilonFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
-		costFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tms" << endl;
-		uaFile << "Epsilon,\tUA,\t\tNTU,\tD_fr,\tL,\t\tT_H_out,\tms" << endl;
+		epsilonFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tComass,\tms" << endl;
+		costFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tComass,\tms" << endl;
+		uaFile << "Epsilon,\tUA,\t\tNTU,\tD_fr,\tL,\t\tT_H_out,\tComass,\t\tms" << endl;
 
 
 		RegenHX* HT_regen = new RegenHX();
@@ -192,22 +192,23 @@ public:
 		epsilonFile.flush();
 		epsilonFile.close();*/
 
-		double q_dot, T_c_out, T_h_out;
+		double q_dot, T_c_out, T_h_out, comass;
 		
 		for (int ua = 100; ua <= 10000; ua += 100) {
-			q_dot = T_c_out = T_h_out = std::numeric_limits<double>::quiet_NaN();
+			comass = q_dot = T_c_out = T_h_out = std::numeric_limits<double>::quiet_NaN();
 
 			begin = clock();
 			try {
 				HT_regen->design_fix_UA_calc_outlet(ua, 1, T_C_in, P_C, m_dot_C, P_C, T_H_in, P_H, m_dot_H, P_H, q_dot, T_c_out, T_h_out);
 				end = clock();
-				sprintf(output, "%.5f,\t%.0f,\t%.2f,\t%.2f,\t%.2f,\t%.0f,\t\t%.0f",
+				sprintf(output, "%.5f,\t%.0f,\t%.2f,\t%.2f,\t%.2f,\t%.0f,\t\t%.2f,\t\t%.0f",
 					HT_regen->ms_des_solved.m_eff_design,
 					HT_regen->ms_des_solved.m_UA_design_total,
 					HT_regen->ms_des_solved.m_NTU_design,
 					HT_regen->getD_fr(),
 					HT_regen->getL(),
 					T_h_out,
+					HT_regen->ms_des_solved.m_f_m_dot_carryover,
 					double(end - begin) / CLOCKS_PER_SEC * 1000.0);
 				uaFile << output << endl;
 				uaFile.flush();

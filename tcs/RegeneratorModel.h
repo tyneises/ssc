@@ -47,6 +47,7 @@ struct RegeneratorSolution {
 	double UA;
 	double m_dot_H;
 	double m_dot_C;
+	double f_m_dot_carryover;
 	double costModule;
 	double L;
 	double D_fr;
@@ -447,6 +448,10 @@ private:
 	/* \brief Carryover mass flow rate [kg/s]
 	*/
 	double comass = 0;
+
+	/* \brief Carryover mass flow fractrion of m_dot_C [-]
+	*/
+	double fraction_comass;
 
 	/*! \brief Number of cycles completed during operationYears of operationHoursPerDay operation. [-]
 		\sa stressAmplitude, wallThickness

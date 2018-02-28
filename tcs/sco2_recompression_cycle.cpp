@@ -1866,8 +1866,8 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	mc_HT_recup.initialize(ms_des_par.m_N_sub_hxrs);
 	
 	// Initialize a few variables
-	double m_dot_t, m_dot_mc, m_dot_rc, m_dot_carryover, Q_dot_LT, Q_dot_HT, UA_LT_calc, UA_HT_calc;
-	m_dot_t = m_dot_mc = m_dot_rc = m_dot_carryover = Q_dot_LT = Q_dot_HT = UA_LT_calc = UA_HT_calc = 0.0;
+	double m_dot_t, m_dot_mc, m_dot_rc, Q_dot_LT, Q_dot_HT, UA_LT_calc, UA_HT_calc;
+	m_dot_t = m_dot_mc = m_dot_rc = Q_dot_LT = Q_dot_HT = UA_LT_calc = UA_HT_calc = 0.0;
 
 	m_temp_last[MC_IN] = ms_des_par.m_T_mc_in;
 	m_pres_last[MC_IN] = ms_des_par.m_P_mc_in;
@@ -2043,7 +2043,26 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	}
 	else	// m_HTR_tech_type == 2 == regenerator
 	{
-		double blah = 1.23;
+		//Dmitrii. Not sure about correct upper bound and the number of iterations
+		carryover_des_solver.settings(ms_des_par.m_tol, 1000, 0, 1, false);
+
+		double carryover_des_solved, tol_carryover_des_solved;
+		carryover_des_solved = tol_carryover_des_solved = std::numeric_limits<double>::quiet_NaN();
+		int iter_carryover_des = -1;
+
+		double carryover_des_guess_lower = 0;
+		double carryover_des_guess_upper = 0.05;
+		int carryover_des_code = carryover_des_solver.solve(carryover_des_guess_lower, carryover_des_guess_upper, 0,
+			carryover_des_solved, tol_carryover_des_solved, iter_carryover_des);
+
+		if (carryover_des_code != C_monotonic_eq_solver::CONVERGED)
+		{
+			//*diff_f_m_dot_HTR_HPin_carryover = std::numeric_limits<double>::quiet_NaN();
+
+			//Dmitrii. I don't know what the correct error code would be
+			error_code = -1;
+			return;
+		}
 	}
 	
 	// Get information calculated in C_mono_eq_HTR_des
@@ -2103,7 +2122,6 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		m_objective_metric_last = m_eta_thermal_calc_last;
 	}
 
-	m_m_dot_carryover = m_dot_carryover;
 	m_m_dot_mc = m_dot_mc;
 	m_m_dot_rc = m_dot_rc;
 	m_m_dot_t = m_dot_t;
@@ -2355,11 +2373,11 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	
 	// Calculate difference between calculated and guessed carry-over fractions
 		// Guess
-	double m_dot_carryover_guess = m_dot_HTR_in - m_m_dot_t;
+	double f_m_dot_carryover_guess = m_f_m_dot_HTR_HPin_carryover;//m_dot_HTR_in - m_m_dot_t;
 		// Calculated
-	double m_dot_carryover_calc = 0.0;		// Get this from HX soluation
-
-	m_diff_mdot_HTR_HPin_carryover = m_dot_carryover_calc - m_dot_carryover_guess;	//[kg/s]
+	double f_m_dot_carryover_calc = mpc_rc_cycle->mc_HT_recup.ms_des_solved.m_f_m_dot_carryover;		// Get this from HX soluation
+	
+	m_diff_mdot_HTR_HPin_carryover = f_m_dot_carryover_calc - f_m_dot_carryover_guess;	//[kg/s]
 
 	*diff_T_HTR_LP_out = T_HTR_LP_out_calc - mpc_rc_cycle->m_temp_last[HTR_LP_OUT];		//[K]	
 

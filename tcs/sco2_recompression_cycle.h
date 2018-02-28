@@ -134,7 +134,7 @@ public:
 			m_N_sub_hxrs = -1;
 
 			// Default to PCHE for HTR
-			m_HTR_tech_type = 1;
+			m_HTR_tech_type = 2;
 
 			// Default to standard optimization to maximize cycle efficiency
 			m_des_objective_type = 1;
@@ -617,8 +617,8 @@ private:
 	C_HeatExchanger /*m_LT, m_HT,*/ m_PHX, m_PC;
 	
 	C_HX_co2_to_co2 mc_LT_recup;
-	C_HX_co2_to_co2 mc_HT_recup;
-	//RegenHX mc_HT_recup;
+	//C_HX_co2_to_co2 mc_HT_recup;
+	RegenHX mc_HT_recup;
 	
 		// Input/Ouput structures for class methods
 	S_design_limits ms_des_limits;

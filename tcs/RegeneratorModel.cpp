@@ -463,7 +463,7 @@ int RegeneratorModel::CarryoverMassFlow_ME(double comass, double *comass_differe
 	this->m_dot_C += comass;
 	this->m_dot_H += comass;
 	if (status != C_monotonic_eq_solver::CONVERGED) {
-		if (tolerance > 0.01) {
+		if (fabs(tolerance) > 0.01) {
 			return -1;
 		}
 	}
@@ -621,7 +621,7 @@ int RegeneratorModel::solveSystem()
 	double tolerance;
 	int statusSolver = Diameter->solve(&tolerance);
 	if (statusSolver != C_monotonic_eq_solver::CONVERGED) {
-		if (tolerance > 0.01) {
+		if (fabs(tolerance) > 0.01) {
 			return -1;
 		}
 	}
@@ -641,7 +641,11 @@ int RegeneratorModel::solveSystem()
 
 	if (statusSolver == C_monotonic_eq_solver::CONVERGED) {
 		carryoverEnthDrop();
-		calcCarryoverMassFlow();
+		
+		fraction_comass = comass / m_dot_C;
+		m_dot_H -= comass;
+		m_dot_C -= comass;
+
 		calculateCost();
 
 		return 0;
@@ -664,6 +668,7 @@ void RegeneratorModel::getSolution(RegeneratorSolution * solution)
 	solution->UA = UA;
 	solution->m_dot_H = m_dot_H;
 	solution->m_dot_C = m_dot_C;
+	solution->f_m_dot_carryover = fraction_comass;
 	solution->costModule = costModule;
 	solution->L = L;
 	solution->D_fr = D_fr;
