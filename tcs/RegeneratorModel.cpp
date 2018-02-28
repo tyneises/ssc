@@ -2,7 +2,7 @@
 
 std::string SSCDIR1(std::getenv("SSCDIR"));
 
-string const RegeneratorModel::LOG_FILEPATH = SSCDIR1 + "/examples/RegenHX_LOG.log";
+string const RegeneratorModel::LOG_FILEPATH = SSCDIR1 + "/build_sdk/examples/RegenHX_LOG.log";
 string const RegeneratorModel::PROPERTY_FILES = SSCDIR1 + "/tcs/PropertyFiles/";
 string const RegeneratorModel::SPHERES_RP_TABLE_PATH = PROPERTY_FILES + "Spheres_RP.csv";
 string const RegeneratorModel::BALANCED_REGENERATOR_TABLE_PATH = PROPERTY_FILES + "balanced-regenerator.csv";

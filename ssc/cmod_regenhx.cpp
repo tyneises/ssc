@@ -138,7 +138,7 @@ public:
 
 		epsilonFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tComass,\tms" << endl;
 		costFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tComass,\tms" << endl;
-		uaFile << "Epsilon,\tUA,\t\tNTU,\tD_fr,\tL,\t\tT_H_out,\tComass,\t\tms" << endl;
+		uaFile << "Epsilon,\tUA,\t\tNTU,\tD_fr,\tL,\t\tT_H_out,\tComass Fract,\t\tms" << endl;
 
 
 		RegenHX* HT_regen = new RegenHX();
