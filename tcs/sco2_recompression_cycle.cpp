@@ -1863,7 +1863,11 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		// LTR
 	mc_LT_recup.initialize(ms_des_par.m_N_sub_hxrs);
 		// HTR
-	mc_HT_recup.initialize(ms_des_par.m_N_sub_hxrs);
+	if (ms_des_par.m_HTR_tech_type != 2)
+		mpc_HTR = &mc_HTR_pche;
+	else
+		mpc_HTR = &mc_HTR_regen;
+	mpc_HTR->initialize(ms_des_par.m_N_sub_hxrs);
 	
 	// Initialize a few variables
 	double m_dot_t, m_dot_mc, m_dot_rc, Q_dot_LT, Q_dot_HT, UA_LT_calc, UA_HT_calc;
@@ -2360,7 +2364,7 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 
 	try
 	{
-	mpc_rc_cycle->mc_HT_recup.design_fix_UA_calc_outlet(mpc_rc_cycle->ms_des_par.m_UA_HT, mpc_rc_cycle->ms_des_par.m_HT_eff_max,
+	mpc_rc_cycle->mpc_HTR->design_fix_UA_calc_outlet(mpc_rc_cycle->ms_des_par.m_UA_HT, mpc_rc_cycle->ms_des_par.m_HT_eff_max,
 		mpc_rc_cycle->m_temp_last[MIXER_OUT], mpc_rc_cycle->m_pres_last[MIXER_OUT], m_dot_HTR_in, mpc_rc_cycle->m_pres_last[HTR_HP_OUT],
 		mpc_rc_cycle->m_temp_last[TURB_OUT], mpc_rc_cycle->m_pres_last[TURB_OUT], m_dot_HTR_in, mpc_rc_cycle->m_pres_last[HTR_LP_OUT],
 		m_Q_dot_HT, mpc_rc_cycle->m_temp_last[HTR_HP_OUT], T_HTR_LP_out_calc);
@@ -2375,7 +2379,7 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 		// Guess
 	double f_m_dot_carryover_guess = m_f_m_dot_HTR_HPin_carryover;//m_dot_HTR_in - m_m_dot_t;
 		// Calculated
-	double f_m_dot_carryover_calc = mpc_rc_cycle->mc_HT_recup.ms_des_solved.m_f_m_dot_carryover;		// Get this from HX soluation
+	double f_m_dot_carryover_calc = (*mpc_rc_cycle->mpc_HTR->get_des_solved()).m_f_m_dot_carryover; // *(mpc_rc_cycle->mc_HT_recup.get_des_solved()).m_f_m_dot_carryover;		// Get this from HX soluation
 	
 	m_diff_mdot_HTR_HPin_carryover = f_m_dot_carryover_calc - f_m_dot_carryover_guess;	//[kg/s]
 
@@ -3277,7 +3281,7 @@ void C_RecompCycle::finalize_design(int & error_code)
 	ms_des_solved.ms_rc_ms_des_solved = *m_rc_ms.get_design_solved();
 	ms_des_solved.ms_t_des_solved = *m_t.get_design_solved();
 	ms_des_solved.ms_LTR_des_solved = mc_LT_recup.ms_des_solved;
-	ms_des_solved.ms_HTR_des_solved = mc_HT_recup.ms_des_solved;
+	ms_des_solved.ms_HTR_des_solved = *mpc_HTR->get_des_solved(); // mc_HT_recup.ms_des_solved;
 
 	// Set solved design point metrics
 	ms_des_solved.m_temp = m_temp_last;
@@ -3845,7 +3849,7 @@ int C_RecompCycle::C_mono_eq_HTR_od::operator()(double T_HTR_LP_out_guess /*K*/,
 	double T_HTR_LP_out_calc = std::numeric_limits<double>::quiet_NaN();
 	try
 	{
-	mpc_rc_cycle->mc_HT_recup.off_design_solution(mpc_rc_cycle->m_temp_od[MIXER_OUT], mpc_rc_cycle->m_pres_od[MIXER_OUT], m_m_dot_t, mpc_rc_cycle->m_pres_od[HTR_HP_OUT],
+	mpc_rc_cycle->mpc_HTR->off_design_solution(mpc_rc_cycle->m_temp_od[MIXER_OUT], mpc_rc_cycle->m_pres_od[MIXER_OUT], m_m_dot_t, mpc_rc_cycle->m_pres_od[HTR_HP_OUT],
 							mpc_rc_cycle->m_temp_od[TURB_OUT], mpc_rc_cycle->m_pres_od[TURB_OUT], m_m_dot_t, mpc_rc_cycle->m_pres_od[HTR_LP_OUT],
 							m_Q_dot_HTR, mpc_rc_cycle->m_temp_od[HTR_HP_OUT], T_HTR_LP_out_calc);
 	}
@@ -3985,8 +3989,8 @@ int C_RecompCycle::C_mono_eq_turbo_N_fixed_m_dot::operator()(double m_dot_t_in /
 		// HTR
 	std::vector<double> DP_HT;
 	DP_HT.resize(2);
-	DP_HT[0] = mpc_rc_cycle->mc_HT_recup.od_delta_p_cold(m_dot_t_in);
-	DP_HT[1] = mpc_rc_cycle->mc_HT_recup.od_delta_p_hot(m_dot_t_in);
+	DP_HT[0] = mpc_rc_cycle->mpc_HTR->od_delta_p_cold(m_dot_t_in);
+	DP_HT[1] = mpc_rc_cycle->mpc_HTR->od_delta_p_hot(m_dot_t_in);
 		// PHX
 	std::vector<double> DP_PHX;
 	std::vector<double> m_dot_PHX;
@@ -4350,7 +4354,7 @@ void C_RecompCycle::off_design_fix_shaft_speeds_core(int & error_code)
 	ms_od_solved.ms_rc_ms_od_solved = *m_rc_ms.get_od_solved();
 	ms_od_solved.ms_t_od_solved = *m_t.get_od_solved();
 	ms_od_solved.ms_LT_recup_od_solved = mc_LT_recup.ms_od_solved;
-	ms_od_solved.ms_HT_recup_od_solved = mc_HT_recup.ms_od_solved;
+	ms_od_solved.ms_HT_recup_od_solved = *mpc_HTR->get_od_solved();
 
 	// Set ms_od_solved
 	ms_od_solved.m_eta_thermal = m_eta_thermal_od;
