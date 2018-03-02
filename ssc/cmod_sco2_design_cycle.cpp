@@ -125,11 +125,11 @@ public:
 		DP_PHX[1] = 0;
 		int N_sub_hxrs = 10;
 
-		C_RecompCycle::S_auto_opt_design_parameters ms_rc_autodes_par;
+		C_sco2_cycle_core::S_auto_opt_design_parameters ms_rc_autodes_par;
 
-		ms_rc_autodes_par.m_DP_HT = DP_HT;
-		ms_rc_autodes_par.m_DP_LT = DP_LT;
-		ms_rc_autodes_par.m_DP_PC = DP_PC;
+		ms_rc_autodes_par.m_DP_HTR = DP_HT;
+		ms_rc_autodes_par.m_DP_LTR = DP_LT;
+		ms_rc_autodes_par.m_DP_PC_main = DP_PC;
 		ms_rc_autodes_par.m_DP_PHX = DP_PHX;
 
 		ms_rc_autodes_par.m_eta_mc = eta_mc;
@@ -149,7 +149,7 @@ public:
 
 		C_RecompCycle ms_rc_cycle;
 		int auto_opt_error_code = 0;
-		ms_rc_cycle.auto_opt_design(ms_rc_autodes_par, auto_opt_error_code);
+		auto_opt_error_code = ms_rc_cycle.auto_opt_design(ms_rc_autodes_par);
 		if( auto_opt_error_code != 0 )
 		{
 			char tstr[300];

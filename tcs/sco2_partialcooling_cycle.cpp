@@ -50,6 +50,7 @@
 #include "sco2_partialcooling_cycle.h"
 
 #include <algorithm>
+#include <string>
 
 #include "nlopt.hpp"
 #include "fmin.h"
@@ -809,8 +810,8 @@ int C_PartialCooling_Cycle::auto_opt_design_core()
 	ms_opt_des_par.m_T_t_in = ms_auto_opt_des_par.m_T_t_in;			//[K]
 	ms_opt_des_par.m_DP_LTR = ms_auto_opt_des_par.m_DP_LTR;			        //(cold, hot) positive values are absolute [kPa], negative values are relative (-)
 	ms_opt_des_par.m_DP_HTR = ms_auto_opt_des_par.m_DP_HTR;				    //(cold, hot) positive values are absolute [kPa], negative values are relative (-)
-	ms_opt_des_par.m_DP_PC_full = ms_auto_opt_des_par.m_DP_PC_full;		    //(cold, hot) positive values are absolute [kPa], negative values are relative (-)
-	ms_opt_des_par.m_DP_PC_partial = ms_auto_opt_des_par.m_DP_PC_partial;   //(cold, hot) positive values are absolute [kPa], negative values are relative (-)
+	ms_opt_des_par.m_DP_PC_full = ms_auto_opt_des_par.m_DP_PC_pre;		    //(cold, hot) positive values are absolute [kPa], negative values are relative (-)
+	ms_opt_des_par.m_DP_PC_partial = ms_auto_opt_des_par.m_DP_PC_main;   //(cold, hot) positive values are absolute [kPa], negative values are relative (-)
 	ms_opt_des_par.m_DP_PHX = ms_auto_opt_des_par.m_DP_PHX;				    //(cold, hot) positive values are absolute [kPa], negative values are relative (-)
 	ms_opt_des_par.m_UA_rec_total = ms_auto_opt_des_par.m_UA_rec_total;		//[kW/K]
 	ms_opt_des_par.m_LTR_eff_max = ms_auto_opt_des_par.m_LTR_eff_max;		//[-]
@@ -875,6 +876,20 @@ int C_PartialCooling_Cycle::auto_opt_design_core()
 	pc_opt_des_error_code = finalize_design();
 
 	return pc_opt_des_error_code;
+}
+
+int C_PartialCooling_Cycle::auto_opt_design_hit_eta(S_auto_opt_design_hit_eta_parameters & auto_opt_des_hit_eta_in, std::string & error_msg)
+{
+	throw(C_csp_exception("C_PartialCooling_Cycle::auto_opt_design_hit_eta does not yet exist"));
+
+	return -1;
+}
+
+int C_PartialCooling_Cycle::off_design_fix_shaft_speeds(S_od_phi_par & od_phi_par_in)
+{
+	throw(C_csp_exception("C_PartialCooling_Cycle::off_design_fix_shaft_speeds does not yet exist"));
+
+	return -1;
 }
 
 double nlopt_cb_opt_partialcooling_des(const std::vector<double> &x, std::vector<double> &grad, void *data)
