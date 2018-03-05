@@ -2380,7 +2380,7 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	double m_dot_carryover_guess = m_dot_HTR_in - m_m_dot_t;
 		// Calculated
 
-	double m_dot_carryover_calc = mpc_rc_cycle->mc_HT_recup.ms_des_solved.m_m_dot_carryover;		// Get this from HX solution
+	double m_dot_carryover_calc = mpc_rc_cycle->mpc_HTR->get_des_solved()->m_m_dot_carryover;		// Get this from HX solution
 	
 	m_diff_mdot_HTR_HPin_carryover = m_dot_carryover_calc - m_dot_carryover_guess;	//[kg/s]
 
