@@ -47,7 +47,7 @@ struct RegeneratorSolution {
 	double UA;
 	double m_dot_H;
 	double m_dot_C;
-	double f_m_dot_carryover;
+	double m_dot_carryover;
 	double costModule;
 	double L;
 	double D_fr;
@@ -447,11 +447,7 @@ private:
 
 	/* \brief Carryover mass flow rate [kg/s]
 	*/
-	double comass = 0;
-
-	/* \brief Carryover mass flow fractrion of m_dot_C [-]
-	*/
-	double fraction_comass;
+	double m_dot_carryover = 0;
 
 	/*! \brief Number of cycles completed during operationYears of operationHoursPerDay operation. [-]
 		\sa stressAmplitude, wallThickness
@@ -805,7 +801,7 @@ public:
 	int ColdPressureDrop_ME(double dP_C, double * dP_CsDifference);
 	int Length_ME(double L, double * dP_max);
 	int Diameter_ME(double D_fr, double * targetParameter);
-	int CarryoverMassFlow_ME(double comass, double * comass_difference);
+	int CarryoverMassFlow_ME(double m_dot_carryover, double * comass_difference);
 	int WallThickness_ME(double th, double * stressAmplitude);
 
 	int solveSystem();

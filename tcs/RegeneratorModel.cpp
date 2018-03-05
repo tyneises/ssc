@@ -356,12 +356,12 @@ void RegeneratorModel::calcCarryoverMassFlow()
 	double integral_L = densityIntegral(T_H_out, T_H_in, P_H);
 
 	double mass = 2 * (e_v * pow(D_fr, 2) / 4 * PI *(integral_H - integral_L) + (mass_C + mass_H)) / CO;
-	comass = mass / P_0;
+	m_dot_carryover = mass / P_0;
 }
 
 void RegeneratorModel::carryoverEnthDrop()
 {
-	h_H_out = (h_C_in * comass + h_H_out * (m_dot_H - comass)) / m_dot_H;
+	h_H_out = (h_C_in * m_dot_carryover + h_H_out * (m_dot_H - m_dot_carryover)) / m_dot_H;
 	CO2_PH(P_H_out, h_H_out, &CO2State);
 	T_H_out = CO2State.temp;
 }
@@ -450,27 +450,24 @@ int RegeneratorModel::Diameter_ME(double D_fr, double * targetParameter)
 	return 0;
 }
 
-int RegeneratorModel::CarryoverMassFlow_ME(double comass, double *comass_difference)
+int RegeneratorModel::CarryoverMassFlow_ME(double m_dot_carryover, double *comass_difference)
 {
-	this->m_dot_C -= comass;
-	this->m_dot_H -= comass;
+	this->m_dot_C -= m_dot_carryover;
+	this->m_dot_H -= m_dot_carryover;
 
 	massflowVariablesInit();
 	
-	double tolerance;
-	double status = Diameter->solve(&tolerance);
+	double status = Diameter->solve();
 
-	this->m_dot_C += comass;
-	this->m_dot_H += comass;
+	this->m_dot_C += m_dot_carryover;
+	this->m_dot_H += m_dot_carryover;
 	if (status != C_monotonic_eq_solver::CONVERGED) {
-		if (fabs(tolerance) > 0.01) {
-			return -1;
-		}
+		return -1;
 	}
 
 	calcCarryoverMassFlow();
 
-	*comass_difference = comass - this->comass;
+	*comass_difference = m_dot_carryover - this->m_dot_carryover;
 	return 0;
 }
 
@@ -556,7 +553,7 @@ int RegeneratorModel::solveSystem()
 	HotPressureDrop_SP.target = 0;
 	HotPressureDrop_SP.guessValue1 = targetdP_max - 10;		HotPressureDrop_SP.guessValue2 = targetdP_max;
 	HotPressureDrop_SP.lowerBound = 0.1;					HotPressureDrop_SP.upperBound = P_H;
-	HotPressureDrop_SP.tolerance = 0.01;
+	HotPressureDrop_SP.tolerance = 0.001;
 	HotPressureDrop_SP.iterationLimit = 50;
 	HotPressureDrop_SP.isErrorRel = false;
 	HotPressureDrop_SP.classInst = this;
@@ -566,7 +563,7 @@ int RegeneratorModel::solveSystem()
 	ColdPressureDrop_SP.target = 0;
 	ColdPressureDrop_SP.guessValue1 = targetdP_max / 100 - 10;		ColdPressureDrop_SP.guessValue2 = targetdP_max / 100;
 	ColdPressureDrop_SP.lowerBound = 0.1;							ColdPressureDrop_SP.upperBound = P_C;
-	ColdPressureDrop_SP.tolerance = 0.01;
+	ColdPressureDrop_SP.tolerance = 0.001;
 	ColdPressureDrop_SP.iterationLimit = 50;
 	ColdPressureDrop_SP.isErrorRel = false;
 	ColdPressureDrop_SP.classInst = this;
@@ -576,7 +573,7 @@ int RegeneratorModel::solveSystem()
 	Length_SP.target = targetdP_max;
 	Length_SP.guessValue1 = 0.8;		Length_SP.guessValue2 = 1;
 	Length_SP.lowerBound = 0.1;			Length_SP.upperBound = 10;
-	Length_SP.tolerance = 0.01;
+	Length_SP.tolerance = 0.001;
 	Length_SP.iterationLimit = 50;
 	Length_SP.isErrorRel = true;
 	Length_SP.classInst = this;
@@ -595,7 +592,7 @@ int RegeneratorModel::solveSystem()
 	CarryoverMassFlow_SP.solverName = "Carryover Mass Solver";
 	CarryoverMassFlow_SP.target = 0;
 	CarryoverMassFlow_SP.lowerBound = 0;		CarryoverMassFlow_SP.upperBound = min(m_dot_C, m_dot_H);
-	CarryoverMassFlow_SP.tolerance = 0.01;
+	CarryoverMassFlow_SP.tolerance = 0.001;
 	CarryoverMassFlow_SP.iterationLimit = 50;
 	CarryoverMassFlow_SP.isErrorRel = false;
 	CarryoverMassFlow_SP.classInst = this;
@@ -618,18 +615,15 @@ int RegeneratorModel::solveSystem()
 	Diameter = new MonoSolver<RegeneratorModel>(&Diameter_SP);
 	WallThickness = new MonoSolver<RegeneratorModel>(&WallThickness_SP);
 	
-	double tolerance;
-	int statusSolver = Diameter->solve(&tolerance);
+	int statusSolver = Diameter->solve();
 	if (statusSolver != C_monotonic_eq_solver::CONVERGED) {
-		if (fabs(tolerance) > 0.01) {
-			return -1;
-		}
+		return -1;
 	}
 
 	calcCarryoverMassFlow();
 
-	CarryoverMassFlow_SP.guessValue1 = comass;
-	CarryoverMassFlow_SP.guessValue2 = comass + 1;
+	CarryoverMassFlow_SP.guessValue1 = m_dot_carryover;
+	CarryoverMassFlow_SP.guessValue2 = m_dot_carryover + 1;
 	CarryoverMassFlow = new MonoSolver<RegeneratorModel>(&CarryoverMassFlow_SP);
 	HeatTransfer->updateGuesses(T_H_out - 1, T_H_out);
 	HotPressureDrop->updateGuesses(dP_H - 10, dP_H);
@@ -642,9 +636,8 @@ int RegeneratorModel::solveSystem()
 	if (statusSolver == C_monotonic_eq_solver::CONVERGED) {
 		carryoverEnthDrop();
 		
-		fraction_comass = comass / m_dot_C;
-		m_dot_H -= comass;
-		m_dot_C -= comass;
+		m_dot_H -= m_dot_carryover;
+		m_dot_C -= m_dot_carryover;
 
 		calculateCost();
 
@@ -668,7 +661,7 @@ void RegeneratorModel::getSolution(RegeneratorSolution * solution)
 	solution->UA = UA;
 	solution->m_dot_H = m_dot_H;
 	solution->m_dot_C = m_dot_C;
-	solution->f_m_dot_carryover = fraction_comass;
+	solution->m_dot_carryover = m_dot_carryover;
 	solution->costModule = costModule;
 	solution->L = L;
 	solution->D_fr = D_fr;

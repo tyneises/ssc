@@ -1073,7 +1073,7 @@ void C_HX_counterflow::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, doub
 {
 	ms_des_solved.m_UA_design_total = ms_des_solved.m_min_DT_design = ms_des_solved.m_eff_design = ms_des_solved.m_NTU_design =
 		ms_des_solved.m_T_h_out = ms_des_solved.m_T_c_out = ms_des_solved.m_DP_cold_des = ms_des_solved.m_DP_hot_des = std::numeric_limits<double>::quiet_NaN();
-	ms_des_solved.m_f_m_dot_carryover = 0;
+	ms_des_solved.m_m_dot_carryover = 0;
 
 	double eff_calc, min_DT, NTU, UA_calc;
 	eff_calc = min_DT = NTU = UA_calc = std::numeric_limits<double>::quiet_NaN();

@@ -2025,9 +2025,9 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	C_MEQ_carryover_des carryover_des_eq(this, w_mc, w_t);
 	C_monotonic_eq_solver carryover_des_solver(carryover_des_eq);
 
-	double f_m_dot_HTR_HPin_carryover = 0.0;		//[-] Fraction of HTR HP inlet mass flow lost to carryover
+	double f_m_dot_HTR_HPin_carryover = 0;		//[-] Fraction of HTR HP inlet mass flow lost to carryover
 
-	if (ms_des_par.m_HTR_tech_type != 2)	// HTR is a regenerator
+	if (ms_des_par.m_HTR_tech_type != 2)	// m_HTR_tech_type == 1 == recuperator
 	{
 		double diff_f_m_dot_carryover_test = std::numeric_limits<double>::quiet_NaN();
 		error_code = carryover_des_solver.test_member_function(f_m_dot_HTR_HPin_carryover, &diff_f_m_dot_carryover_test);
@@ -2046,21 +2046,19 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		//Dmitrii. Not sure about correct upper bound and the number of iterations
 		carryover_des_solver.settings(ms_des_par.m_tol, 1000, 0, 1, false);
 
-		double carryover_des_solved, tol_carryover_des_solved;
-		carryover_des_solved = tol_carryover_des_solved = std::numeric_limits<double>::quiet_NaN();
+		double tol_carryover_des_solved;
+		f_m_dot_HTR_HPin_carryover = tol_carryover_des_solved = std::numeric_limits<double>::quiet_NaN();
 		int iter_carryover_des = -1;
 
 		double carryover_des_guess_lower = 0;
-		double carryover_des_guess_upper = 0.05;
+		double carryover_des_guess_upper = 0.005;
 		int carryover_des_code = carryover_des_solver.solve(carryover_des_guess_lower, carryover_des_guess_upper, 0,
-			carryover_des_solved, tol_carryover_des_solved, iter_carryover_des);
+			f_m_dot_HTR_HPin_carryover, tol_carryover_des_solved, iter_carryover_des);
 
 		if (carryover_des_code != C_monotonic_eq_solver::CONVERGED)
 		{
-			//*diff_f_m_dot_HTR_HPin_carryover = std::numeric_limits<double>::quiet_NaN();
-
 			//Dmitrii. I don't know what the correct error code would be
-			error_code = -1;
+			error_code = -22;
 			return;
 		}
 	}
@@ -2235,14 +2233,15 @@ int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, doub
 		(m_w_mc*(1.0 - mpc_rc_cycle->ms_des_par.m_recomp_frac) + 
 			m_w_rc * mpc_rc_cycle->ms_des_par.m_recomp_frac + m_w_t*(1.0 - m_f_m_dot_HTR_HPin_carryover));		//[kg/s]
 
-	if( m_m_dot_t < 0.0 )
+	m_m_dot_t = m_dot_HTR_in*(1.0 - m_f_m_dot_HTR_HPin_carryover);		//[kg/s]
+	m_m_dot_rc = m_dot_HTR_in * mpc_rc_cycle->ms_des_par.m_recomp_frac;		//[kg/s]
+	m_m_dot_mc = m_dot_HTR_in - m_m_dot_rc;			//[kg/s]
+
+	if (m_m_dot_t < 0.0)
 	{
 		*diff_T_LTR_LP_out = std::numeric_limits<double>::quiet_NaN();
 		return 29;
 	}
-	m_m_dot_t = m_dot_HTR_in*(1.0 - m_f_m_dot_HTR_HPin_carryover);		//[kg/s]
-	m_m_dot_rc = m_dot_HTR_in * mpc_rc_cycle->ms_des_par.m_recomp_frac;		//[kg/s]
-	m_m_dot_mc = m_dot_HTR_in - m_m_dot_rc;			//[kg/s]
 
 	double T_LTR_LP_out_calc = std::numeric_limits<double>::quiet_NaN();
 
@@ -2373,11 +2372,12 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	
 	// Calculate difference between calculated and guessed carry-over fractions
 		// Guess
-	double f_m_dot_carryover_guess = m_f_m_dot_HTR_HPin_carryover;//m_dot_HTR_in - m_m_dot_t;
+	//double f_m_dot_carryover_guess = m_f_m_dot_HTR_HPin_carryover;
+	double m_dot_carryover_guess = m_dot_HTR_in - m_m_dot_t;
 		// Calculated
-	double f_m_dot_carryover_calc = mpc_rc_cycle->mc_HT_recup.ms_des_solved.m_f_m_dot_carryover;		// Get this from HX soluation
+	double m_dot_carryover_calc = mpc_rc_cycle->mc_HT_recup.ms_des_solved.m_m_dot_carryover;		// Get this from HX solution
 	
-	m_diff_mdot_HTR_HPin_carryover = f_m_dot_carryover_calc - f_m_dot_carryover_guess;	//[kg/s]
+	m_diff_mdot_HTR_HPin_carryover = m_dot_carryover_calc - m_dot_carryover_guess;	//[kg/s]
 
 	*diff_T_HTR_LP_out = T_HTR_LP_out_calc - mpc_rc_cycle->m_temp_last[HTR_LP_OUT];		//[K]	
 

@@ -138,7 +138,7 @@ public:
 
 		epsilonFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tComass,\tms" << endl;
 		costFile << "Epsilon,\tCost,\t\tUA,\t\tT_H_out,\tdP_H,\tdP_C,\tD_fr,\t\tL,\t\t\tWallThickness,\tComass,\tms" << endl;
-		uaFile << "Epsilon,\tUA,\t\tNTU,\tD_fr,\tL,\t\tT_H_out,\tComass Fract,\t\tms" << endl;
+		uaFile << "Epsilon,\tUA,\t\tNTU,\tD_fr,\tL,\t\tT_H_out,\tComass,\t\tms" << endl;
 
 
 		RegenHX* HT_regen = new RegenHX();
@@ -208,7 +208,7 @@ public:
 					HT_regen->getD_fr(),
 					HT_regen->getL(),
 					T_h_out,
-					HT_regen->ms_des_solved.m_f_m_dot_carryover,
+					HT_regen->ms_des_solved.m_m_dot_carryover,
 					double(end - begin) / CLOCKS_PER_SEC * 1000.0);
 				uaFile << output << endl;
 				uaFile.flush();
