@@ -4,6 +4,9 @@
 #include <vector>
 
 #include "numeric_solvers.h"
+#include "heat_exchangers.h"
+
+#include "RegenHX.h"
 
 void calculate_turbomachinery_outlet_1(double T_in /*K*/, double P_in /*kPa*/, double P_out /*kPa*/, double eta /*-*/, bool is_comp, int & error_code, double & enth_in /*kJ/kg*/, double & entr_in /*kJ/kg-K*/,
 	double & dens_in /*kg/m3*/, double & temp_out /*K*/, double & enth_out /*kJ/kg*/, double & entr_out /*kJ/kg-K*/, double & dens_out /*kg/m3*/, double & spec_work /*kJ/kg*/);
@@ -55,6 +58,79 @@ public:
 
 	void hxr_conductance(const std::vector<double> & m_dots, double & hxr_UA);
 
+};
+
+class C_sco2_re_hx_template
+{
+public:
+
+	virtual void initialize(int N_sub_hx) = 0;
+
+	virtual void design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/) = 0;
+
+	virtual const C_HX_counterflow::S_des_solved * get_des_solved() = 0;
+
+	virtual void off_design_solution(double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/) = 0;
+
+	virtual double od_delta_p_cold(double m_dot_c /*kg/s*/) = 0;
+
+	virtual double od_delta_p_hot(double m_dot_h /*kg/s*/) = 0;
+
+	virtual const C_HX_counterflow::S_od_solved * get_od_solved() = 0;
+};
+
+class C_sco2_re_hx_pche : public C_sco2_re_hx_template
+{
+private:
+	C_HX_co2_to_co2 mc_hx;
+
+public:
+	virtual void initialize(int N_sub_hx);
+
+	virtual void design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);
+
+	virtual const C_HX_counterflow::S_des_solved * get_des_solved();
+
+	virtual void off_design_solution(double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);
+
+	virtual double od_delta_p_cold(double m_dot_c /*kg/s*/);
+
+	virtual double od_delta_p_hot(double m_dot_h /*kg/s*/);
+
+	virtual const C_HX_counterflow::S_od_solved * get_od_solved();
+};
+
+class C_sco2_re_hx_regen : public C_sco2_re_hx_template
+{
+private:
+	RegenHX mc_hx;
+
+public:
+	virtual void initialize(int N_sub_hx);
+
+	virtual void design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);
+
+	virtual const C_HX_counterflow::S_des_solved * get_des_solved();
+
+	virtual void off_design_solution(double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);
+
+	virtual double od_delta_p_cold(double m_dot_c /*kg/s*/);
+
+	virtual double od_delta_p_hot(double m_dot_h /*kg/s*/);
+
+	virtual const C_HX_counterflow::S_od_solved * get_od_solved();
 };
 
 class C_turbine

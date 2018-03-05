@@ -191,6 +191,104 @@ void C_HeatExchanger::hxr_conductance(const std::vector<double> & m_dots, double
 	hxr_UA = ms_des_par.m_UA_design*pow(m_dot_ratio, 0.8);
 }
 
+void C_sco2_re_hx_pche::initialize(int N_sub_hx)
+{
+	mc_hx.initialize(N_sub_hx);
+
+	return;
+}
+
+void C_sco2_re_hx_pche::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
+{
+	mc_hx.design_fix_UA_calc_outlet(UA_target, eff_target, T_c_in, P_c_in, m_dot_c, P_c_out,
+		T_h_in, P_h_in, m_dot_h, P_h_out,
+		q_dot, T_c_out, T_h_out);
+
+	return;
+}
+
+const C_HX_counterflow::S_des_solved * C_sco2_re_hx_pche::get_des_solved()
+{
+	return &mc_hx.ms_des_solved;
+}
+
+void C_sco2_re_hx_pche::off_design_solution(double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
+{
+	mc_hx.off_design_solution(T_c_in, P_c_in, m_dot_c, P_c_out,
+		T_h_in, P_h_in, m_dot_h, P_h_out,
+		q_dot, T_c_out, T_h_out);
+
+	return;
+}
+
+double C_sco2_re_hx_pche::od_delta_p_cold(double m_dot_c /*kg/s*/)
+{
+	return mc_hx.od_delta_p_cold(m_dot_c);
+}
+
+double C_sco2_re_hx_pche::od_delta_p_hot(double m_dot_h /*kg/s*/)
+{
+	return mc_hx.od_delta_p_hot(m_dot_h);
+}
+
+const C_HX_counterflow::S_od_solved * C_sco2_re_hx_pche::get_od_solved()
+{
+	return &mc_hx.ms_od_solved;
+}
+
+void C_sco2_re_hx_regen::initialize(int N_sub_hx)
+{
+	mc_hx.initialize(N_sub_hx);
+
+	return;
+}
+
+void C_sco2_re_hx_regen::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
+{
+	mc_hx.design_fix_UA_calc_outlet(UA_target, eff_target, T_c_in, P_c_in, m_dot_c, P_c_out,
+		T_h_in, P_h_in, m_dot_h, P_h_out,
+		q_dot, T_c_out, T_h_out);
+
+	return;
+}
+
+const C_HX_counterflow::S_des_solved * C_sco2_re_hx_regen::get_des_solved()
+{
+	return &mc_hx.ms_des_solved;
+}
+
+void C_sco2_re_hx_regen::off_design_solution(double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
+{
+	mc_hx.off_design_solution(T_c_in, P_c_in, m_dot_c, P_c_out,
+		T_h_in, P_h_in, m_dot_h, P_h_out,
+		q_dot, T_c_out, T_h_out);
+
+	return;
+}
+
+double C_sco2_re_hx_regen::od_delta_p_cold(double m_dot_c /*kg/s*/)
+{
+	return mc_hx.od_delta_p_cold(m_dot_c);
+}
+
+double C_sco2_re_hx_regen::od_delta_p_hot(double m_dot_h /*kg/s*/)
+{
+	return mc_hx.od_delta_p_hot(m_dot_h);
+}
+
+const C_HX_counterflow::S_od_solved * C_sco2_re_hx_regen::get_od_solved()
+{
+	return &mc_hx.ms_od_solved;
+}
+
 void C_turbine::turbine_sizing(const S_design_parameters & des_par_in, int & error_code)
 {
 	/* 9.4.14: code from John Dyreby, converted to C++ by Ty Neises
