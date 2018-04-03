@@ -9,11 +9,6 @@ RegenHX::~RegenHX()
 {
 }
 
-void RegenHX::initialize(int N_sub_hx)
-{
-	
-}
-
 int RegenHX::solveSystem()
 {
 	RegeneratorSolution solution;
@@ -37,6 +32,8 @@ int RegenHX::solveSystem()
 	D_fr = solution.D_fr;
 	wallThickness = solution.wallThickness;
 	m_dot_carryover = solution.m_dot_carryover;
+	m_HTR_LP_dP = solution.m_HTR_LP_dP;
+	m_HTR_HP_dP = solution.m_HTR_HP_dP;
 
 	if (operationMode == operationModes::PARALLEL) {
 		costHX *= modulesInParallel;
@@ -66,6 +63,8 @@ int RegenHX::solveSystem(double* results)
 		results[7] = -1;
 		results[8] = -1;
 		results[9] = -1;
+		results[10] = -1;
+		results[11] = -1;
 
 		return status;
 	}
@@ -80,8 +79,14 @@ int RegenHX::solveSystem(double* results)
 	results[7] = L;
 	results[8] = wallThickness;
 	results[9] = m_dot_carryover;
+	results[10] = m_HTR_LP_dP;
+	results[11] = m_HTR_HP_dP;
 
 	return status;
+}
+
+void RegenHX::initialize(double N_sub_hx)
+{
 }
 
 double RegenHX::od_delta_p_cold(double m_dot_c /*kg/s*/)
@@ -104,6 +109,9 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 		T_h_out = T_h_in;
 
 		resetDesignStructure();
+		ms_des_solved.m_m_dot_carryover = 0;
+		ms_des_solved.m_DP_cold_des = 0;
+		ms_des_solved.m_DP_hot_des = 0;
 		return;
 	}
 
@@ -112,14 +120,27 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	double P_0 = 45;
 	double D_s = 0.003;
 	double e_v = 0.37;
-	double dP_max = P_h_in - P_h_out;
-	if (dP_max < 220) {
-		dP_max = 220;
-	}
+	double dP_max_total = max(P_h_in - P_h_out, P_c_in - P_c_out);
 
 	setParameters(operationModes::PARALLEL, Q_dot_loss, P_0, D_s, e_v);
 	setInletStates(T_h_in, P_h_in, m_dot_h, T_c_in, P_c_in, m_dot_c);
-	setDesignTargets(targetModes::UA, UA_target, dP_max);
+	setDesignTargets(targetModes::UA, UA_target, dP_max_total);
+
+	valve* valves = new valve[4];
+	//High Pressure Low Temperature. T_c_in
+	valves[0].cost = 36000;
+	valves[0].cv = 950;
+	//High Pressure High Temperature. T_c_out
+	valves[1].cost = 74000;
+	valves[1].cv = 1100;
+	//Low Pressure High Temperature. T_h_in
+	valves[2].cost = 101000;
+	valves[2].cv = 1750;
+	//Low Pressure Low Temperature. T_h_out
+	valves[3].cost = 36000;
+	valves[3].cv = 950;
+
+	setValves(valves);
 	
 	int status = solveSystem();
 
@@ -133,8 +154,8 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	T_c_out = T_C_out;
 	T_h_out = T_H_out;
 
-	ms_des_solved.m_DP_cold_des = 0;
-	ms_des_solved.m_DP_hot_des = 0;
+	ms_des_solved.m_DP_cold_des = m_HTR_HP_dP;
+	ms_des_solved.m_DP_hot_des = m_HTR_LP_dP;
 	ms_des_solved.m_eff_design = epsilon;
 	ms_des_solved.m_min_DT_design = min((T_H_in - T_H_out), (T_C_out - T_C_in));
 	ms_des_solved.m_NTU_design = NTU_R_e;
@@ -199,11 +220,16 @@ void RegenHX::setParameters(operationModes::operationModes operationMode, double
 	regenModel->setParameters(Q_dot_loss, P_0, D_s, e_v);
 }
 
-void RegenHX::setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max)
+void RegenHX::setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max_total)
 {
 	if (targetMode != targetModes::EPSILON && this->operationMode == operationModes::PARALLEL) {
-		regenModel->setDesignTargets(targetMode, targetParameter / modulesInParallel, dP_max);
+		regenModel->setDesignTargets(targetMode, targetParameter / modulesInParallel, dP_max_total);
 	} else {
-		regenModel->setDesignTargets(targetMode, targetParameter, dP_max);
+		regenModel->setDesignTargets(targetMode, targetParameter, dP_max_total);
 	}
+}
+
+void RegenHX::setValves(valve * valves)
+{
+	regenModel->setValves(valves);
 }

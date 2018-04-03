@@ -48,10 +48,21 @@ struct RegeneratorSolution {
 	double m_dot_H;
 	double m_dot_C;
 	double m_dot_carryover;
+	double m_HTR_LP_dP;
+	double m_HTR_HP_dP;
 	double costModule;
 	double L;
 	double D_fr;
 	double wallThickness;
+};
+
+struct valve {
+	double T_in;
+	double P_in;
+	double m_dot;
+	double cv;
+	double dP;
+	double cost;
 };
 
 /*!
@@ -112,6 +123,10 @@ private:
 
 	//! Contains property functions that are used to set CO2 states.
 	CO2_state CO2State;
+
+	valve* valves;
+
+	int valveIndex;
 
 	//! Used to store error codes produced by CO2_state class methods. 
 	int error;
@@ -286,10 +301,15 @@ private:
 
 	// [Heat Exchanger Design Parameters]
 
-	/*! \brief Target maximum pressure drop in [kPa]
+	/*! \brief Target maximum pressure drop excluding valves in [kPa]
 		\sa dP_max
 	*/
 	double targetdP_max;
+
+	/*! \brief Target maximum pressure drop including valves in [kPa]
+	\sa dP_max
+	*/
+	double targetdP_max_total;
 
 	/*! \brief Flow switch period in [s]
 		\sa f_0
@@ -384,6 +404,12 @@ private:
 	*/
 	double dP_max;
 
+	/*! \brief Maximum pressure drop including valve pressure dropsin [kPa]
+	It is a maximum pressure drop out of dP_C_total and dP_H_total.
+	\sa targetdP_max
+	*/
+	double dP_total_max;
+
 	/*! \brief Heat transferred between cold and hot sides in [kW]
 		\sa Q_dot_calc, Q_dot_a, Q_dot_loss, CalculateThermoAndPhysicalModels()
 	*/
@@ -404,10 +430,20 @@ private:
 	*/
 	double dP_H;
 
+	/*! \brief Actual pressure drop at hot side including pressure drop through valves in [kPa]
+	\sa dP_H
+	*/
+	double dP_H_total;
+
 	/*! \brief Actual pressure drop at cold side in [kPa].
 		\sa dP_C_calc
 	*/
 	double dP_C;
+
+	/*! \brief Actual pressure drop at cold side including pressure drop through valves in [kPa]
+	\sa dP_C
+	*/
+	double dP_C_total;
 
 	/*! \brief NTU of the cycle. [-]
 		\sa NTU_R_e, CalculateThermoAndPhysicalModels()
@@ -723,6 +759,11 @@ private:
 	*/
 	MonoSolver<RegeneratorModel>* Diameter;
 
+	/*! \brief Monotonic equation solver that splits pressure drop between valves and regenerator itself.
+	\sa PressureSplit_ME
+	*/
+	MonoSolver<RegeneratorModel>* PressureSplit;
+
 	/*! \brief Monotonic equation solver that balances carryover mass flow and regenerator mass flow.
 		\sa CarryoverMassFlow_ME
 	*/
@@ -732,6 +773,8 @@ private:
 		\sa WallThickness_ME
 	*/
 	MonoSolver<RegeneratorModel>* WallThickness;
+
+	MonoSolver<RegeneratorModel>* Valve;
 
 	/* \breif Integrates Density*dL of CO2 along the regenerator bed.
 		Linear temperature distribution with respect to L inside of the regenerator is assumed.
@@ -749,13 +792,17 @@ private:
 	*/
 	void carryoverEnthDrop();
 
+	void calcValvePressureDrops();
+
 	SolverParameters<RegeneratorModel> HeatTransfer_SP;
 	SolverParameters<RegeneratorModel> HotPressureDrop_SP;
 	SolverParameters<RegeneratorModel> ColdPressureDrop_SP;
 	SolverParameters<RegeneratorModel> Length_SP;
 	SolverParameters<RegeneratorModel> Diameter_SP;
 	SolverParameters<RegeneratorModel> CarryoverMassFlow_SP;
+	SolverParameters<RegeneratorModel> PressureSplit_SP;
 	SolverParameters<RegeneratorModel> WallThickness_SP;
+	SolverParameters<RegeneratorModel> Valve_SP;
 
 public:
 	RegeneratorModel();
@@ -796,6 +843,8 @@ public:
 	*/
 	void setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max);
 
+	void setValves(valve* valves);
+
 	int HeatTransfer_ME(double T_H_out, double * QdotAsDifference);
 	int HotPressureDrop_ME(double dP_H, double * dP_HsDifference);
 	int ColdPressureDrop_ME(double dP_C, double * dP_CsDifference);
@@ -803,6 +852,8 @@ public:
 	int Diameter_ME(double D_fr, double * targetParameter);
 	int CarryoverMassFlow_ME(double m_dot_carryover, double * comass_difference);
 	int WallThickness_ME(double th, double * stressAmplitude);
+	int Valve_ME(double dP, double * dP_difference);
+	int PressureSplit_ME(double regenMaxDrop_guess, double * diffRegenMaxdrop);
 
 	int solveSystem();
 	void getSolution(RegeneratorSolution* solution);

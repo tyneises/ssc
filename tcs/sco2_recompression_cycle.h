@@ -119,7 +119,7 @@ public:
 			m_N_sub_hxrs = -1;
 
 			// Default to PCHE for HTR
-			m_HTR_tech_type = 1;
+			m_HTR_tech_type = 2;
 
 			// Default to standard optimization to maximize cycle efficiency
 			m_des_objective_type = 1;
@@ -761,6 +761,25 @@ public:
 		double m_Q_dot_LTR, m_Q_dot_HTR;
 
 		virtual int operator()(double T_HTR_LP_out_guess /*K*/, double *diff_T_HTR_LP_out /*K*/);
+	};
+
+	class C_HTR_HP_dP_des : public C_monotonic_equation
+	{
+	private:
+		C_RecompCycle * mpc_rc_cycle;
+
+	public:
+		C_HTR_HP_dP_des(C_RecompCycle *pc_rc_cycle)
+		{
+			mpc_rc_cycle = pc_rc_cycle;
+		}
+
+		// These values are calculated in the operator() method and need to be extracted from this class
+		//     after convergence
+		double m_w_rc, m_w_mc, m_w_t, m_m_dot_t, m_m_dot_rc, m_m_dot_mc, m_m_dot_carryover;
+		double m_Q_dot_LT, m_Q_dot_HT;
+
+		virtual int operator()(double m_HTR_HP_dP_guess /*kPa*/, double *diff_m_HTR_HP_dP /*kPa*/);
 	};
 
 	class C_MEQ_carryover_des : public C_monotonic_equation

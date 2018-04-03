@@ -1849,12 +1849,31 @@ using namespace std;
 void C_RecompCycle::design_core_standard(int & error_code)
 {
 	// twn 1.4.17: put reasonable lower bound on *modeled* recompression fraction
+	/*ms_des_par.m_P_mc_out = 25000;
+	ms_des_par.m_P_mc_in = 7870;
+	ms_des_par.m_recomp_frac = 0.3436;
+	ms_des_par.m_T_mc_in = 305.15;
+	ms_des_par.m_T_t_in = 993.15;
+	ms_des_par.m_W_dot_net = 10000;
+	ms_des_par.m_UA_LT = 2908;
+	ms_des_par.m_UA_HT = 5910;
+	ms_des_par.m_DP_LT[0] = 175;
+	ms_des_par.m_DP_LT[1] = 175;*/
+	//ms_des_par.m_DP_HT[0] = 75.95;
+	ms_des_par.m_DP_HT[1] = 216;//175;
+	ms_des_par.m_P_mc_out = 21291.796068;
+	ms_des_par.m_P_mc_in = 8809.754338;
+	ms_des_par.m_recomp_frac = 0.244573;
+	ms_des_par.m_UA_LT = 8818 - 6429.560377;
+	ms_des_par.m_UA_HT = 6429.560377;
+
 	if( ms_des_par.m_recomp_frac < 0.01 )
 	{
 		ms_des_par.m_recomp_frac = 0.0;
 		double UA_tot = ms_des_par.m_UA_LT + ms_des_par.m_UA_HT;
 		ms_des_par.m_UA_LT = UA_tot;
 		ms_des_par.m_UA_HT = 0.0;
+		ms_des_par.m_DP_HT[1] = 0;
 	}
 
 	CO2_state co2_props;
@@ -1878,168 +1897,20 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	m_pres_last[MC_OUT] = ms_des_par.m_P_mc_out;
 	m_temp_last[TURB_IN] = ms_des_par.m_T_t_in;
 
-	// Apply pressure drops to heat exchangers, fully defining the pressures at all states
-	if( ms_des_par.m_DP_LT[0] < 0.0 )
-		m_pres_last[LTR_HP_OUT] = m_pres_last[MC_OUT] - m_pres_last[MC_OUT] * fabs(ms_des_par.m_DP_LT[0]);		// relative pressure drop specified for LT recuperator (cold stream)
-	else
-		m_pres_last[LTR_HP_OUT] = m_pres_last[MC_OUT] - ms_des_par.m_DP_LT[0];				// absolute pressure drop specified for LT recuperator (cold stream)
+	C_HTR_HP_dP_des HTR_HP_dP_des_eq(this);
+	C_monotonic_eq_solver HTR_HP_dP_des_solver(HTR_HP_dP_des_eq);
 
-	if( ms_des_par.m_UA_LT < 1.0E-12 )
-		m_pres_last[LTR_HP_OUT] = m_pres_last[MC_OUT];			// If there is no LT recuperator, there is no pressure drop
+	//double HTR_LP_dP_guess = 216;		//[-] Fraction of HTR HP inlet mass flow lost to carryover
 
-	m_pres_last[MIXER_OUT] = m_pres_last[LTR_HP_OUT];			// Assume no pressure drop in mixing valve
-	m_pres_last[RC_OUT] = m_pres_last[LTR_HP_OUT];				// Assume no pressure drop in mixing valve
-
-	if( ms_des_par.m_DP_HT[0] < 0.0 )
-		m_pres_last[HTR_HP_OUT] = m_pres_last[MIXER_OUT] - m_pres_last[MIXER_OUT] * fabs(ms_des_par.m_DP_HT[0]);	// relative pressure drop specified for HT recuperator (cold stream)
-	else
-		m_pres_last[HTR_HP_OUT] = m_pres_last[MIXER_OUT] - ms_des_par.m_DP_HT[0];				// absolute pressure drop specified for HT recuperator (cold stream)
-
-	if( ms_des_par.m_UA_HT < 1.0E-12 )
-		m_pres_last[HTR_HP_OUT] = m_pres_last[MIXER_OUT];		// If there is no HT recuperator, there is no pressure drop
-
-	if( ms_des_par.m_DP_PHX[0] < 0.0 )
-		m_pres_last[TURB_IN] = m_pres_last[HTR_HP_OUT] - m_pres_last[HTR_HP_OUT] * fabs(ms_des_par.m_DP_PHX[0]);	// relative pressure drop specified for PHX
-	else
-		m_pres_last[TURB_IN] = m_pres_last[HTR_HP_OUT] - ms_des_par.m_DP_PHX[0];									// absolute pressure drop specified for PHX
-
-	if( ms_des_par.m_DP_PC[1] < 0.0 )
-		m_pres_last[LTR_LP_OUT] = m_pres_last[MC_IN] / (1.0 - fabs(ms_des_par.m_DP_PC[1]));					// relative pressure drop specified for precooler: P1=P9-P9*rel_DP => P1=P9*(1-rel_DP)
-	else
-		m_pres_last[LTR_LP_OUT] = m_pres_last[MC_IN] + ms_des_par.m_DP_PC[1];
-
-	if( ms_des_par.m_DP_LT[1] < 0.0 )
-		m_pres_last[HTR_LP_OUT] = m_pres_last[LTR_LP_OUT] / (1.0 - fabs(ms_des_par.m_DP_LT[1]));	// relative pressure drop specified for LT recuperator (hot stream)
-	else
-		m_pres_last[HTR_LP_OUT] = m_pres_last[LTR_LP_OUT] + ms_des_par.m_DP_LT[1];					// absolute pressure drop specified for LT recuperator (hot stream)
-
-	if( ms_des_par.m_UA_LT < 1.0E-12 )
-		m_pres_last[HTR_LP_OUT] = m_pres_last[LTR_LP_OUT];			// if there is no LT recuperator, there is no pressure drop
-
-	if( ms_des_par.m_DP_HT[1] < 0.0 )
-		m_pres_last[TURB_OUT] = m_pres_last[HTR_LP_OUT] / (1.0 - fabs(ms_des_par.m_DP_HT[1]));	// relative pressure drop specified for HT recuperator (hot stream)
-	else
-		m_pres_last[TURB_OUT] = m_pres_last[HTR_LP_OUT] + ms_des_par.m_DP_HT[1];				// absolute pressure drop specified for HT recuperator (hot stream)
-
-	if( ms_des_par.m_UA_HT < 1.0E-12 )
-		m_pres_last[TURB_OUT] = m_pres_last[HTR_LP_OUT];		// if there is no HT recuperator, there is no pressure drop
-
-	// Determine equivalent isentropic efficiencies for main compressor and turbine, if necessary.
-	double eta_mc_isen = std::numeric_limits<double>::quiet_NaN();
-	double eta_t_isen = std::numeric_limits<double>::quiet_NaN();
-	if( ms_des_par.m_eta_mc < 0.0 )
+	if (ms_des_par.m_HTR_tech_type == 1)	// m_HTR_tech_type == 1 == recuperator
 	{
-		int poly_error_code = 0;
-
-		isen_eta_from_poly_eta(m_temp_last[MC_IN], m_pres_last[MC_IN], m_pres_last[MC_OUT], fabs(ms_des_par.m_eta_mc),
-			true, poly_error_code, eta_mc_isen);
-
-		if( poly_error_code != 0 )
-		{
-			error_code = poly_error_code;
-			return;
-		}
-	}
-	else
-		eta_mc_isen = ms_des_par.m_eta_mc;
-
-	if( ms_des_par.m_eta_t < 0.0 )
-	{
-		int poly_error_code = 0;
-
-		isen_eta_from_poly_eta(m_temp_last[TURB_IN], m_pres_last[TURB_IN], m_pres_last[TURB_OUT], fabs(ms_des_par.m_eta_t),
-			false, poly_error_code, eta_t_isen);
-
-		if( poly_error_code != 0 )
-		{
-			error_code = poly_error_code;
-			return;
-		}
-	}
-	else
-		eta_t_isen = ms_des_par.m_eta_t;
-
-	// Determine the outlet state and specific work for the main compressor and turbine.
-	int comp_error_code = 0;
-	double w_mc = std::numeric_limits<double>::quiet_NaN();
-	// Main compressor
-	calculate_turbomachinery_outlet_1(m_temp_last[MC_IN], m_pres_last[MC_IN], m_pres_last[MC_OUT], eta_mc_isen, true,
-		comp_error_code, m_enth_last[MC_IN], m_entr_last[MC_IN], m_dens_last[MC_IN], m_temp_last[MC_OUT],
-		m_enth_last[MC_OUT], m_entr_last[MC_OUT], m_dens_last[MC_OUT], w_mc);
-
-	if( comp_error_code != 0 )
-	{
-		error_code = comp_error_code;
-		return;
-	}
-
-	int turbine_error_code = 0;
-	double w_t = std::numeric_limits<double>::quiet_NaN();
-	// Turbine
-	calculate_turbomachinery_outlet_1(m_temp_last[TURB_IN], m_pres_last[TURB_IN], m_pres_last[TURB_OUT], eta_t_isen, false,
-		turbine_error_code, m_enth_last[TURB_IN], m_entr_last[TURB_IN], m_dens_last[TURB_IN], m_temp_last[TURB_OUT],
-		m_enth_last[TURB_OUT], m_entr_last[TURB_OUT], m_dens_last[TURB_OUT], w_t);
-
-	if( turbine_error_code != 0 )
-	{
-		error_code = turbine_error_code;
-		return;
-	}
-
-	// Check that this cycle can produce power
-	double eta_rc_isen = std::numeric_limits<double>::quiet_NaN();
-	double w_rc = std::numeric_limits<double>::quiet_NaN();
-	if( ms_des_par.m_recomp_frac >= 1.E-12 )
-	{
-		if( ms_des_par.m_eta_rc < 0.0 )		// need to convert polytropic efficiency to isentropic efficiency
-		{
-			int rc_error_code = 0;
-
-			isen_eta_from_poly_eta(m_temp_last[MC_OUT], m_pres_last[LTR_LP_OUT], m_pres_last[RC_OUT], fabs(ms_des_par.m_eta_rc),
-				true, rc_error_code, eta_rc_isen);
-
-			if( rc_error_code != 0 )
-			{
-				error_code = rc_error_code;
-				return;
-			}
-		}
-		else
-			eta_rc_isen = ms_des_par.m_eta_rc;
-
-		int rc_error_code = 0;
-		calculate_turbomachinery_outlet_1(m_temp_last[MC_OUT], m_pres_last[LTR_LP_OUT], m_pres_last[RC_OUT], eta_rc_isen,
-			true, rc_error_code, w_rc);
-
-		if( rc_error_code != 0 )
-		{
-			error_code = rc_error_code;
-			return;
-		}
-	}
-	else
-		w_rc = 0.0;
-
-	if( w_mc + w_rc + w_t <= 0.0 )	// positive net power is impossible; return an error
-	{
-		error_code = 25;
-		return;
-	}
-
-	C_MEQ_carryover_des carryover_des_eq(this, w_mc, w_t);
-	C_monotonic_eq_solver carryover_des_solver(carryover_des_eq);
-
-	double f_m_dot_HTR_HPin_carryover = 0;		//[-] Fraction of HTR HP inlet mass flow lost to carryover
-
-	if (ms_des_par.m_HTR_tech_type != 2)	// m_HTR_tech_type == 1 == recuperator
-	{
-		double diff_f_m_dot_carryover_test = std::numeric_limits<double>::quiet_NaN();
-		error_code = carryover_des_solver.test_member_function(f_m_dot_HTR_HPin_carryover, &diff_f_m_dot_carryover_test);
+		double diff_HTR_HP_dP_test = std::numeric_limits<double>::quiet_NaN();
+		error_code = HTR_HP_dP_des_solver.test_member_function(ms_des_par.m_DP_HT[1], &diff_HTR_HP_dP_test);
 		if (error_code != 0)
 			return;
 
 		// Don't expect PCHE model to ever have carryover, but it won't hurt to check here?
-		if (fabs(diff_f_m_dot_carryover_test) > ms_des_par.m_tol)
+		if (fabs(diff_HTR_HP_dP_test) > ms_des_par.m_tol)
 		{
 			error_code = -22;
 			return;
@@ -2048,33 +1919,47 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	else	// m_HTR_tech_type == 2 == regenerator
 	{
 		//Dmitrii. Not sure about correct upper bound and the number of iterations
-		carryover_des_solver.settings(ms_des_par.m_tol, 1000, 0, 1, false);
+		HTR_HP_dP_des_solver.settings(ms_des_par.m_tol, 50, 0, ms_des_par.m_P_mc_out, false);
 
-		double tol_carryover_des_solved;
-		f_m_dot_HTR_HPin_carryover = tol_carryover_des_solved = std::numeric_limits<double>::quiet_NaN();
-		int iter_carryover_des = -1;
+		double tol_HTR_HP_dP_des_solved;
+		double m_HTR_HP_dP_des = tol_HTR_HP_dP_des_solved = std::numeric_limits<double>::quiet_NaN();
+		int iter_HTR_HP_dP_des = -1;
 
-		double carryover_des_guess_lower = 0;
-		double carryover_des_guess_upper = 0.005;
-		int carryover_des_code = carryover_des_solver.solve(carryover_des_guess_lower, carryover_des_guess_upper, 0,
-			f_m_dot_HTR_HPin_carryover, tol_carryover_des_solved, iter_carryover_des);
+		double HTR_HP_dP_des_guess_lower = ms_des_par.m_DP_HT[1] / 3;
+		double HTR_HP_dP_des_guess_upper = ms_des_par.m_DP_HT[1] / 2;
 
-		if (carryover_des_code != C_monotonic_eq_solver::CONVERGED)
+		spdlog::get("logger")->warn("{->HTR_HP_dP; P_H = " + std::to_string(ms_des_par.m_P_mc_out) + 
+			", P_L = " + std::to_string(ms_des_par.m_P_mc_in) +
+			", recomp = " + std::to_string(ms_des_par.m_recomp_frac) +
+			", UA_HT = " + std::to_string(ms_des_par.m_UA_HT));
+
+		int HTR_HP_dP_des_code = HTR_HP_dP_des_solver.solve(HTR_HP_dP_des_guess_lower, HTR_HP_dP_des_guess_upper, 0,
+			m_HTR_HP_dP_des, tol_HTR_HP_dP_des_solved, iter_HTR_HP_dP_des);
+
+		if (HTR_HP_dP_des_code != C_monotonic_eq_solver::CONVERGED)
 		{
 			//Dmitrii. I don't know what the correct error code would be
 			error_code = -22;
+			spdlog::get("logger")->warn("<-}HTR_HP_dP; code = " + std::to_string(HTR_HP_dP_des_code));
 			return;
 		}
+
+		spdlog::get("logger")->warn("<-}HTR_HP_dP; HP_dP = " + std::to_string(ms_des_par.m_DP_HT[0]) +
+			", m_dot = " + std::to_string(HTR_HP_dP_des_eq.m_m_dot_t) +
+			", comass = " + std::to_string(HTR_HP_dP_des_eq.m_m_dot_carryover) +
+			", UA_HT = " + std::to_string(ms_des_par.m_UA_HT));
 	}
 	
-	// Get information calculated in C_mono_eq_HTR_des
-	w_rc = carryover_des_eq.m_w_rc;
-	m_dot_t = carryover_des_eq.m_m_dot_t;
-	m_dot_rc = carryover_des_eq.m_m_dot_rc;
-	m_dot_mc = carryover_des_eq.m_m_dot_mc;
-	m_m_dot_carryover = carryover_des_eq.m_m_dot_carryover;
-	Q_dot_LT = carryover_des_eq.m_Q_dot_LT;
-	Q_dot_HT = carryover_des_eq.m_Q_dot_HT;
+	// Get information calculated in HTR_HP_dP_des_eq
+	double w_rc = HTR_HP_dP_des_eq.m_w_rc;
+	double w_mc = HTR_HP_dP_des_eq.m_w_mc;
+	double w_t = HTR_HP_dP_des_eq.m_w_t;
+	m_dot_t = HTR_HP_dP_des_eq.m_m_dot_t;
+	m_dot_rc = HTR_HP_dP_des_eq.m_m_dot_rc;
+	m_dot_mc = HTR_HP_dP_des_eq.m_m_dot_mc;
+	m_m_dot_carryover = HTR_HP_dP_des_eq.m_m_dot_carryover;
+	Q_dot_LT = HTR_HP_dP_des_eq.m_Q_dot_LT;
+	Q_dot_HT = HTR_HP_dP_des_eq.m_Q_dot_HT;
 
 	// State 5 can now be fully defined
 	m_enth_last[HTR_HP_OUT] = m_enth_last[MIXER_OUT] + Q_dot_HT / m_dot_t;						// Energy balance on cold stream of high-temp recuperator
@@ -2124,13 +2009,223 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		m_objective_metric_last = m_eta_thermal_calc_last;
 	}
 
+	spdlog::get("logger")->error("Cycle Eff = " + std::to_string(m_eta_thermal_calc_last));
+
 	m_m_dot_mc = m_dot_mc;
 	m_m_dot_rc = m_dot_rc;
 	m_m_dot_t = m_dot_t;
 }
 
+int C_RecompCycle::C_HTR_HP_dP_des::operator()(double m_HTR_HP_dP_guess, double * diff_m_HTR_HP_dP)
+{
+	mpc_rc_cycle->ms_des_par.m_DP_HT[0] = m_HTR_HP_dP_guess;
+	spdlog::get("logger")->info("\tguess = " + std::to_string(m_HTR_HP_dP_guess));
+
+	// Apply pressure drops to heat exchangers, fully defining the pressures at all states
+	if (mpc_rc_cycle->ms_des_par.m_DP_LT[0] < 0.0)
+		mpc_rc_cycle->m_pres_last[LTR_HP_OUT] = mpc_rc_cycle->m_pres_last[MC_OUT] - mpc_rc_cycle->m_pres_last[MC_OUT] * fabs(mpc_rc_cycle->ms_des_par.m_DP_LT[0]);		// relative pressure drop specified for LT recuperator (cold stream)
+	else
+		mpc_rc_cycle->m_pres_last[LTR_HP_OUT] = mpc_rc_cycle->m_pres_last[MC_OUT] - mpc_rc_cycle->ms_des_par.m_DP_LT[0];				// absolute pressure drop specified for LT recuperator (cold stream)
+
+	if (mpc_rc_cycle->ms_des_par.m_UA_LT < 1.0E-12)
+		mpc_rc_cycle->m_pres_last[LTR_HP_OUT] = mpc_rc_cycle->m_pres_last[MC_OUT];			// If there is no LT recuperator, there is no pressure drop
+
+	mpc_rc_cycle->m_pres_last[MIXER_OUT] = mpc_rc_cycle->m_pres_last[LTR_HP_OUT];			// Assume no pressure drop in mixing valve
+	mpc_rc_cycle->m_pres_last[RC_OUT] = mpc_rc_cycle->m_pres_last[LTR_HP_OUT];				// Assume no pressure drop in mixing valve
+
+	if (mpc_rc_cycle->ms_des_par.m_DP_HT[0] < 0.0)
+		mpc_rc_cycle->m_pres_last[HTR_HP_OUT] = mpc_rc_cycle->m_pres_last[MIXER_OUT] - mpc_rc_cycle->m_pres_last[MIXER_OUT] * fabs(mpc_rc_cycle->ms_des_par.m_DP_HT[0]);	// relative pressure drop specified for HT recuperator (cold stream)
+	else
+		mpc_rc_cycle->m_pres_last[HTR_HP_OUT] = mpc_rc_cycle->m_pres_last[MIXER_OUT] - mpc_rc_cycle->ms_des_par.m_DP_HT[0];				// absolute pressure drop specified for HT recuperator (cold stream)
+
+	if (mpc_rc_cycle->ms_des_par.m_UA_HT < 1.0E-12)
+		mpc_rc_cycle->m_pres_last[HTR_HP_OUT] = mpc_rc_cycle->m_pres_last[MIXER_OUT];		// If there is no HT recuperator, there is no pressure drop
+
+	if (mpc_rc_cycle->ms_des_par.m_DP_PHX[0] < 0.0)
+		mpc_rc_cycle->m_pres_last[TURB_IN] = mpc_rc_cycle->m_pres_last[HTR_HP_OUT] - mpc_rc_cycle->m_pres_last[HTR_HP_OUT] * fabs(mpc_rc_cycle->ms_des_par.m_DP_PHX[0]);	// relative pressure drop specified for PHX
+	else
+		mpc_rc_cycle->m_pres_last[TURB_IN] = mpc_rc_cycle->m_pres_last[HTR_HP_OUT] - mpc_rc_cycle->ms_des_par.m_DP_PHX[0];									// absolute pressure drop specified for PHX
+
+	if (mpc_rc_cycle->ms_des_par.m_DP_PC[1] < 0.0)
+		mpc_rc_cycle->m_pres_last[LTR_LP_OUT] = mpc_rc_cycle->m_pres_last[MC_IN] / (1.0 - fabs(mpc_rc_cycle->ms_des_par.m_DP_PC[1]));					// relative pressure drop specified for precooler: P1=P9-P9*rel_DP => P1=P9*(1-rel_DP)
+	else
+		mpc_rc_cycle->m_pres_last[LTR_LP_OUT] = mpc_rc_cycle->m_pres_last[MC_IN] + mpc_rc_cycle->ms_des_par.m_DP_PC[1];
+
+	if (mpc_rc_cycle->ms_des_par.m_DP_LT[1] < 0.0)
+		mpc_rc_cycle->m_pres_last[HTR_LP_OUT] = mpc_rc_cycle->m_pres_last[LTR_LP_OUT] / (1.0 - fabs(mpc_rc_cycle->ms_des_par.m_DP_LT[1]));	// relative pressure drop specified for LT recuperator (hot stream)
+	else
+		mpc_rc_cycle->m_pres_last[HTR_LP_OUT] = mpc_rc_cycle->m_pres_last[LTR_LP_OUT] + mpc_rc_cycle->ms_des_par.m_DP_LT[1];					// absolute pressure drop specified for LT recuperator (hot stream)
+
+	if (mpc_rc_cycle->ms_des_par.m_UA_LT < 1.0E-12)
+		mpc_rc_cycle->m_pres_last[HTR_LP_OUT] = mpc_rc_cycle->m_pres_last[LTR_LP_OUT];			// if there is no LT recuperator, there is no pressure drop
+
+	if (mpc_rc_cycle->ms_des_par.m_DP_HT[1] < 0.0)
+		mpc_rc_cycle->m_pres_last[TURB_OUT] = mpc_rc_cycle->m_pres_last[HTR_LP_OUT] / (1.0 - fabs(mpc_rc_cycle->ms_des_par.m_DP_HT[1]));	// relative pressure drop specified for HT recuperator (hot stream)
+	else
+		mpc_rc_cycle->m_pres_last[TURB_OUT] = mpc_rc_cycle->m_pres_last[HTR_LP_OUT] + mpc_rc_cycle->ms_des_par.m_DP_HT[1];				// absolute pressure drop specified for HT recuperator (hot stream)
+
+	if (mpc_rc_cycle->ms_des_par.m_UA_HT < 1.0E-12)
+		mpc_rc_cycle->m_pres_last[TURB_OUT] = mpc_rc_cycle->m_pres_last[HTR_LP_OUT];		// if there is no HT recuperator, there is no pressure drop
+
+																// Determine equivalent isentropic efficiencies for main compressor and turbine, if necessary.
+	double eta_mc_isen = std::numeric_limits<double>::quiet_NaN();
+	double eta_t_isen = std::numeric_limits<double>::quiet_NaN();
+	if (mpc_rc_cycle->ms_des_par.m_eta_mc < 0.0)
+	{
+		int poly_error_code = 0;
+
+		isen_eta_from_poly_eta(mpc_rc_cycle->m_temp_last[MC_IN], mpc_rc_cycle->m_pres_last[MC_IN], mpc_rc_cycle->m_pres_last[MC_OUT], fabs(mpc_rc_cycle->ms_des_par.m_eta_mc),
+			true, poly_error_code, eta_mc_isen);
+
+		if (poly_error_code != 0)
+		{
+			return poly_error_code;
+		}
+	}
+	else
+		eta_mc_isen = mpc_rc_cycle->ms_des_par.m_eta_mc;
+
+	if (mpc_rc_cycle->ms_des_par.m_eta_t < 0.0)
+	{
+		int poly_error_code = 0;
+
+		isen_eta_from_poly_eta(mpc_rc_cycle->m_temp_last[TURB_IN], mpc_rc_cycle->m_pres_last[TURB_IN], mpc_rc_cycle->m_pres_last[TURB_OUT], fabs(mpc_rc_cycle->ms_des_par.m_eta_t),
+			false, poly_error_code, eta_t_isen);
+
+		if (poly_error_code != 0)
+		{
+			return poly_error_code;
+		}
+	}
+	else
+		eta_t_isen = mpc_rc_cycle->ms_des_par.m_eta_t;
+
+	// Determine the outlet state and specific work for the main compressor and turbine.
+	int comp_error_code = 0;
+	double w_mc = std::numeric_limits<double>::quiet_NaN();
+	// Main compressor
+	calculate_turbomachinery_outlet_1(mpc_rc_cycle->m_temp_last[MC_IN], mpc_rc_cycle->m_pres_last[MC_IN], mpc_rc_cycle->m_pres_last[MC_OUT], eta_mc_isen, true,
+		comp_error_code, mpc_rc_cycle->m_enth_last[MC_IN], mpc_rc_cycle->m_entr_last[MC_IN], mpc_rc_cycle->m_dens_last[MC_IN], mpc_rc_cycle->m_temp_last[MC_OUT],
+		mpc_rc_cycle->m_enth_last[MC_OUT], mpc_rc_cycle->m_entr_last[MC_OUT], mpc_rc_cycle->m_dens_last[MC_OUT], w_mc);
+
+	if (comp_error_code != 0)
+	{
+		return comp_error_code;
+	}
+
+	int turbine_error_code = 0;
+	double w_t = std::numeric_limits<double>::quiet_NaN();
+	// Turbine
+	calculate_turbomachinery_outlet_1(mpc_rc_cycle->m_temp_last[TURB_IN], mpc_rc_cycle->m_pres_last[TURB_IN], mpc_rc_cycle->m_pres_last[TURB_OUT], eta_t_isen, false,
+		turbine_error_code, mpc_rc_cycle->m_enth_last[TURB_IN], mpc_rc_cycle->m_entr_last[TURB_IN], mpc_rc_cycle->m_dens_last[TURB_IN], mpc_rc_cycle->m_temp_last[TURB_OUT],
+		mpc_rc_cycle->m_enth_last[TURB_OUT], mpc_rc_cycle->m_entr_last[TURB_OUT], mpc_rc_cycle->m_dens_last[TURB_OUT], w_t);
+
+	if (turbine_error_code != 0)
+	{
+		return turbine_error_code;
+	}
+
+	// Check that this cycle can produce power
+	double eta_rc_isen = std::numeric_limits<double>::quiet_NaN();
+	double w_rc = std::numeric_limits<double>::quiet_NaN();
+	if (mpc_rc_cycle->ms_des_par.m_recomp_frac >= 1.E-12)
+	{
+		if (mpc_rc_cycle->ms_des_par.m_eta_rc < 0.0)		// need to convert polytropic efficiency to isentropic efficiency
+		{
+			int rc_error_code = 0;
+
+			isen_eta_from_poly_eta(mpc_rc_cycle->m_temp_last[MC_OUT], mpc_rc_cycle->m_pres_last[LTR_LP_OUT], mpc_rc_cycle->m_pres_last[RC_OUT], fabs(mpc_rc_cycle->ms_des_par.m_eta_rc),
+				true, rc_error_code, eta_rc_isen);
+
+			if (rc_error_code != 0)
+			{
+				return rc_error_code;
+			}
+		}
+		else
+			eta_rc_isen = mpc_rc_cycle->ms_des_par.m_eta_rc;
+
+		int rc_error_code = 0;
+		calculate_turbomachinery_outlet_1(mpc_rc_cycle->m_temp_last[MC_OUT], mpc_rc_cycle->m_pres_last[LTR_LP_OUT], mpc_rc_cycle->m_pres_last[RC_OUT], eta_rc_isen,
+			true, rc_error_code, w_rc);
+
+		if (rc_error_code != 0)
+		{
+			return rc_error_code;
+		}
+	}
+	else
+		w_rc = 0.0;
+
+	if (w_mc + w_rc + w_t <= 0.0)	// positive net power is impossible; return an error
+	{
+		return 25;
+	}
+
+	m_w_mc = w_mc;
+	m_w_t = w_t;
+
+	C_MEQ_carryover_des carryover_des_eq(mpc_rc_cycle, w_mc, w_t);
+	C_monotonic_eq_solver carryover_des_solver(carryover_des_eq);
+
+	double f_m_dot_HTR_HPin_carryover = 0;		//[-] Fraction of HTR HP inlet mass flow lost to carryover
+
+	if (mpc_rc_cycle->ms_des_par.m_HTR_tech_type == 1)	// m_HTR_tech_type == 1 == recuperator
+	{
+		double diff_f_m_dot_carryover_test = std::numeric_limits<double>::quiet_NaN();
+		double error_code = carryover_des_solver.test_member_function(f_m_dot_HTR_HPin_carryover, &diff_f_m_dot_carryover_test);
+		if (error_code != 0)
+			return error_code;
+
+		// Don't expect PCHE model to ever have carryover, but it won't hurt to check here?
+		if (fabs(diff_f_m_dot_carryover_test) > mpc_rc_cycle->ms_des_par.m_tol)
+		{
+			return -22;
+		}
+	}
+	else	// m_HTR_tech_type == 2 == regenerator
+	{
+		//Dmitrii. Not sure about correct upper bound and the number of iterations
+		carryover_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol, 50, 0, 1, false);
+
+		double tol_carryover_des_solved;
+		f_m_dot_HTR_HPin_carryover = tol_carryover_des_solved = std::numeric_limits<double>::quiet_NaN();
+		int iter_carryover_des = -1;
+
+		double carryover_des_guess_lower = 0;
+		double carryover_des_guess_upper = 0.005;
+
+		spdlog::get("logger")->warn("\t{->Carryover");
+		int carryover_des_code = carryover_des_solver.solve(carryover_des_guess_lower, carryover_des_guess_upper, 0,
+			f_m_dot_HTR_HPin_carryover, tol_carryover_des_solved, iter_carryover_des);
+
+		if (carryover_des_code != C_monotonic_eq_solver::CONVERGED)
+		{
+			//Dmitrii. I don't know what the correct error code would be
+			spdlog::get("logger")->warn("\t<-}Carryover; code = " + std::to_string(carryover_des_code));
+			return -22;
+		}
+
+		spdlog::get("logger")->warn("\t<-}Carryover; comass frac = " + std::to_string(f_m_dot_HTR_HPin_carryover) + 
+			", comass = " + std::to_string(carryover_des_eq.m_m_dot_carryover));
+	}
+	
+	m_w_rc = carryover_des_eq.m_w_rc;
+	m_m_dot_t = carryover_des_eq.m_m_dot_t;
+	m_m_dot_rc = carryover_des_eq.m_m_dot_rc;
+	m_m_dot_mc = carryover_des_eq.m_m_dot_mc;
+	m_m_dot_carryover = carryover_des_eq.m_m_dot_carryover;
+	m_Q_dot_LT = carryover_des_eq.m_Q_dot_LT;
+	m_Q_dot_HT = carryover_des_eq.m_Q_dot_HT;
+
+	*diff_m_HTR_HP_dP = m_HTR_HP_dP_guess - mpc_rc_cycle->mpc_HTR->get_des_solved()->m_DP_cold_des;
+	spdlog::get("logger")->warn("\tHTR_HP_dP_diff = " + std::to_string(*diff_m_HTR_HP_dP));
+	return 0;
+}
+
 int C_RecompCycle::C_MEQ_carryover_des::operator()(double f_m_dot_HTR_HPin_carryover_guess /*-*/, double *diff_f_m_dot_HTR_HPin_carryover /*-*/)
 {
+	spdlog::get("logger")->info("\t\tguess = " + std::to_string(f_m_dot_HTR_HPin_carryover_guess));
 	m_w_rc = m_m_dot_t = m_m_dot_rc = m_m_dot_mc = m_m_dot_carryover = m_Q_dot_LT = m_Q_dot_HT = std::numeric_limits<double>::quiet_NaN();
 
 	// ****************************************************
@@ -2151,12 +2246,14 @@ int C_RecompCycle::C_MEQ_carryover_des::operator()(double f_m_dot_HTR_HPin_carry
 	T_HTR_LP_out_solved = tol_T_HTR_LP_out_solved = std::numeric_limits<double>::quiet_NaN();
 	int iter_T_HTR_LP_out = -1;
 
+	spdlog::get("logger")->warn("\t\t{->T_HTR_LP");
 	int T_HTR_LP_out_code = HTR_des_solver.solve(T_HTR_LP_out_guess_lower, T_HTR_LP_out_guess_upper, 0,
 		T_HTR_LP_out_solved, tol_T_HTR_LP_out_solved, iter_T_HTR_LP_out);
 
 	if (T_HTR_LP_out_code != C_monotonic_eq_solver::CONVERGED)
 	{
 		*diff_f_m_dot_HTR_HPin_carryover = std::numeric_limits<double>::quiet_NaN();
+		spdlog::get("logger")->warn("\t\t<-}T_HTR_LP; code = " + std::to_string(T_HTR_LP_out_code));
 		return 35;
 	}
 
@@ -2169,13 +2266,17 @@ int C_RecompCycle::C_MEQ_carryover_des::operator()(double f_m_dot_HTR_HPin_carry
 	m_Q_dot_LT = HTR_des_eq.m_Q_dot_LT;
 	m_Q_dot_HT = HTR_des_eq.m_Q_dot_HT;
 
-	*diff_f_m_dot_HTR_HPin_carryover = HTR_des_eq.m_diff_mdot_HTR_HPin_carryover;
+	*diff_f_m_dot_HTR_HPin_carryover = mpc_rc_cycle->mpc_HTR->get_des_solved()->m_m_dot_carryover - m_m_dot_t*(f_m_dot_HTR_HPin_carryover_guess / (1 - f_m_dot_HTR_HPin_carryover_guess));
+	spdlog::get("logger")->warn("\t\t<-}T_HTR_LP; T_HTR_LP_out = " + std::to_string(T_HTR_LP_out_solved) +
+		", comass = " + std::to_string((m_m_dot_rc + m_m_dot_mc) - m_m_dot_t) +
+		", comass_diff = " + std::to_string(*diff_f_m_dot_HTR_HPin_carryover));
 
 	return 0;
 }
 
 int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, double *diff_T_LTR_LP_out /*K*/)
 {
+	spdlog::get("logger")->info("\t\t\t\tguess = " + std::to_string(T_LTR_LP_out));
 	m_w_rc = m_m_dot_t = m_m_dot_rc = m_m_dot_mc = m_Q_dot_LT = std::numeric_limits<double>::quiet_NaN();
 	
 	mpc_rc_cycle->m_temp_last[LTR_LP_OUT] = T_LTR_LP_out;
@@ -2264,12 +2365,13 @@ int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, doub
 	}
 
 	*diff_T_LTR_LP_out = T_LTR_LP_out_calc - mpc_rc_cycle->m_temp_last[LTR_LP_OUT];		//[K]
-
+	spdlog::get("logger")->info("\t\t\t\tT_LTR_LP_out_diff = " + std::to_string(*diff_T_LTR_LP_out));
 	return 0;
 }
 
 int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, double *diff_T_HTR_LP_out /*K*/)
 {
+	spdlog::get("logger")->info("\t\t\tguess = " + std::to_string(T_HTR_LP_out));
 	m_w_rc = m_m_dot_t = m_m_dot_rc = m_m_dot_mc = 
 		m_Q_dot_LT = m_Q_dot_HT =
 		m_diff_mdot_HTR_HPin_carryover = std::numeric_limits<double>::quiet_NaN();	
@@ -2305,11 +2407,13 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	T_LTR_LP_out_solved = tol_T_LTR_LP_out_solved = std::numeric_limits<double>::quiet_NaN();
 	int iter_T_LTR_LP_out = -1;
 
+	spdlog::get("logger")->warn("\t\t\t{->T_LTR_LP");
 	int T_LTR_LP_out_code = LTR_des_solver.solve(T_LTR_LP_out_guess_lower, T_LTR_LP_out_guess_upper, 0,
 		T_LTR_LP_out_solved, tol_T_LTR_LP_out_solved, iter_T_LTR_LP_out);
 
 	if( T_LTR_LP_out_code != C_monotonic_eq_solver::CONVERGED )
 	{
+		spdlog::get("logger")->warn("\t\t\t<-}T_LTR_LP; code = " + std::to_string(T_LTR_LP_out_code));
 		return 31;
 	}
 
@@ -2322,6 +2426,9 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 
 	// Calculate mass flow rate through HTR with consideration that it could include carry-over
 	double m_dot_HTR_in = m_m_dot_rc + m_m_dot_mc;		//[kg/s]
+
+	spdlog::get("logger")->warn("\t\t\t<-}T_LTR_LP; T_LTR_LP_out = " + std::to_string(T_LTR_LP_out_solved) +
+		", m_dot_HTR_in = " + std::to_string(m_dot_HTR_in));
 
 	// Know LTR performance so we can calculate the HP outlet
 		// Energy balance on LTR HP stream
@@ -2370,6 +2477,7 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	}
 	catch( C_csp_exception & )
 	{
+		spdlog::get("logger")->critical("\t\t\tREGEN_MODEL_FAILED");
 		*diff_T_HTR_LP_out = std::numeric_limits<double>::quiet_NaN();
 		return -1;
 	}
@@ -2377,15 +2485,15 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	// Calculate difference between calculated and guessed carry-over fractions
 		// Guess
 	//double f_m_dot_carryover_guess = m_f_m_dot_HTR_HPin_carryover;
-	double m_dot_carryover_guess = m_dot_HTR_in - m_m_dot_t;
+	//double m_dot_carryover_guess = m_dot_HTR_in - m_m_dot_t;
 		// Calculated
 
-	double m_dot_carryover_calc = mpc_rc_cycle->mpc_HTR->get_des_solved()->m_m_dot_carryover;		// Get this from HX solution
+	//double m_dot_carryover_calc = mpc_rc_cycle->mpc_HTR->get_des_solved()->m_m_dot_carryover;		// Get this from HX solution
 	
-	m_diff_mdot_HTR_HPin_carryover = m_dot_carryover_calc - m_dot_carryover_guess;	//[kg/s]
+	//m_diff_mdot_HTR_HPin_carryover = m_dot_carryover_calc - m_dot_carryover_guess;	//[kg/s]
 
 	*diff_T_HTR_LP_out = T_HTR_LP_out_calc - mpc_rc_cycle->m_temp_last[HTR_LP_OUT];		//[K]	
-
+	spdlog::get("logger")->info("\t\t\tT_HTR_LP_out_diff = " + std::to_string(*diff_T_HTR_LP_out));
 	return 0;
 }
 
@@ -2716,6 +2824,8 @@ void C_RecompCycle::auto_opt_design_core(int & error_code)
 	m_objective_metric_auto_opt = 0.0;
 
 	double P_low_limit = std::min(ms_auto_opt_des_par.m_P_high_limit, std::max(10.E3, ms_auto_opt_des_par.m_P_high_limit*0.2));		//[kPa]
+	//Dmitrii temp edit!
+	P_low_limit = 19000;
 	double best_P_high = fminbr(
 		P_low_limit, ms_auto_opt_des_par.m_P_high_limit, &fmin_cb_opt_des_fixed_P_high, this, 1.0);
 

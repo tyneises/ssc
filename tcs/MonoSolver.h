@@ -76,6 +76,22 @@ public:
 		guessValue2 = guess2;
 	}
 
+	void updateTarget(double target) {
+		if (inProgress) {
+			throw invalid_argument("Solver is currently running!");
+		}
+
+		this->target = target;
+	}
+
+	void updateTolerance(double tolerance) {
+		if (inProgress) {
+			throw invalid_argument("Solver is currently running!");
+		}
+
+		this->tolerance = tolerance;
+	}
+
 	int solve(double* tolSolved = nullptr)
 	{
 		inProgress = true;

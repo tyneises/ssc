@@ -36,6 +36,7 @@ private:
 	double D_fr;
 	double wallThickness;
 	double m_dot_carryover;
+	double m_HTR_LP_dP, m_HTR_HP_dP;
 
 	/*! \brief Number of (hot module + cold module) sets in heat exchenger. [-]
 		
@@ -96,6 +97,8 @@ public:
 	*/
 	void setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max);
 
+	void setValves(valve* valves);
+
 	/*!	\brief Solves the model so that it meets design parameters.
 	*
 	*	Method runs initialize() method and then figureOutL() which is a higher iteration loop, which causes
@@ -113,8 +116,7 @@ public:
 
 	C_HX_counterflow::S_des_solved ms_des_solved;
 	C_HX_counterflow::S_od_solved ms_od_solved;
-
-	void initialize(int N_sub_hx);
+	void initialize(double N_sub_hx);
 
 	double getD_fr() { return D_fr; }
 	double getL() { return L; }
