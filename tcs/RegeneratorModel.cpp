@@ -37,7 +37,7 @@ RegeneratorModel::RegeneratorModel()
 
 RegeneratorModel::~RegeneratorModel()
 {
-	spdlog::get("logger")->flush();
+	//spdlog::get("logger")->flush();
 	spdlog::drop("logger");
 
 	delete bedMaterialTable;
@@ -392,17 +392,13 @@ void RegeneratorModel::calcCarryoverMassFlow()
 	double mass_C = vol_extra / 4 * (rho_H_C_extra - rho_L_C_extra);
 
 	double integral_H, integral_L;
-	/*if (epsilon >= 0.8) {
-		double dT = 32.1165431 - 1.33843643 * (T_C_in - 273.15) + 0.723818378 * (T_H_in - 273.15)
-			+ 0.00222683779 * P_C - 0.000485963027 * P_H - 17.4313839 * C_m_e;
+	
+	double dT = 32.1165431 - 1.33843643 * (T_C_in - 273.15) + 0.723818378 * (T_H_in - 273.15)
+		+ 0.00222683779 * P_C - 0.000485963027 * P_H - 17.4313839 * C_m_e;
 
-		integral_H = densityIntegral(T_C_in, T_C_out - dT, P_C) * L / fabs(T_C_out - dT - T_C_in);
-		integral_L = densityIntegral(T_H_out + dT, T_H_in, P_H) * L / fabs(T_H_in - T_H_out - dT);
-	}
-	else {*/
-		integral_H = densityIntegral(T_C_in, T_C_out , P_C) * L / fabs(T_C_out - T_C_in);
-		integral_L = densityIntegral(T_H_out, T_H_in, P_H) * L / fabs(T_H_in - T_H_out);
-	//}
+	integral_H = densityIntegral(T_C_in, T_C_out - dT, P_C) * L / fabs(T_C_out - dT - T_C_in);
+	integral_L = densityIntegral(T_H_out + dT, T_H_in, P_H) * L / fabs(T_H_in - T_H_out - dT);
+	
 
 	double mass = 2 * (e_v * pow(D_fr, 2) / 4 * PI *(integral_H - integral_L) + (mass_C + mass_H)) / CO;
 	m_dot_carryover = mass / P_0;

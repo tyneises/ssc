@@ -1861,11 +1861,11 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	ms_des_par.m_DP_LT[1] = 175;*/
 	//ms_des_par.m_DP_HT[0] = 75.95;
 	ms_des_par.m_DP_HT[1] = 216;//175;
-	ms_des_par.m_P_mc_out = 21291.796068;
-	ms_des_par.m_P_mc_in = 8809.754338;
-	ms_des_par.m_recomp_frac = 0.244573;
-	ms_des_par.m_UA_LT = 8818 - 6429.560377;
-	ms_des_par.m_UA_HT = 6429.560377;
+	ms_des_par.m_P_mc_out = 22708.203932;
+	ms_des_par.m_P_mc_in = 9693.625714;
+	ms_des_par.m_recomp_frac = 0.300000;
+	ms_des_par.m_UA_LT = 8818 - 4409;
+	ms_des_par.m_UA_HT = 4409;
 
 	if( ms_des_par.m_recomp_frac < 0.01 )
 	{
@@ -1926,7 +1926,7 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		int iter_HTR_HP_dP_des = -1;
 
 		double HTR_HP_dP_des_guess_lower = ms_des_par.m_DP_HT[1] / 3;
-		double HTR_HP_dP_des_guess_upper = ms_des_par.m_DP_HT[1] / 2;
+		double HTR_HP_dP_des_guess_upper = ms_des_par.m_DP_HT[1] / 2 + 1;
 
 		spdlog::get("logger")->warn("{->HTR_HP_dP; P_H = " + std::to_string(ms_des_par.m_P_mc_out) + 
 			", P_L = " + std::to_string(ms_des_par.m_P_mc_in) +

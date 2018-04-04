@@ -144,7 +144,7 @@ public:
 		clock_t begin, end;
 
 		double q_dot, T_c_out, T_h_out, comass;
-		for (int ua = 500; ua <= 10000; ua += 100) {
+		for (int ua = 600; ua <= 600; ua += 100) {
 			comass = q_dot = T_c_out = T_h_out = std::numeric_limits<double>::quiet_NaN();
 
 			begin = clock();
