@@ -41,9 +41,9 @@ private:
 
 	bool isErrorRel;
 
-	C_monotonic_equation* equation;
+	C_monotonic_equation* equation = nullptr;
 
-	C_monotonic_eq_solver* eqSolver;
+	C_monotonic_eq_solver* eqSolver = nullptr;
 
 	bool inProgress;
 	
@@ -60,6 +60,38 @@ public:
 		iterationLimit = params->iterationLimit;
 		isErrorRel = params->isErrorRel;
 
+		equation = new C_member_mono_eq<T>(params->classInst, params->monoEquation);
+		eqSolver = new C_monotonic_eq_solver(*equation);
+		eqSolver->settings(tolerance, iterationLimit, lowerBound, upperBound, isErrorRel);
+
+		inProgress = false;
+	}
+
+	MonoSolver()
+	{
+		inProgress = false;
+	}
+
+	void setParameters(SolverParameters<T>* params)
+	{
+		if (inProgress) {
+			throw invalid_argument("Solver is currently running!");
+		}
+
+		solverName = params->solverName;
+		target = params->target;
+		guessValue1 = params->guessValue1;
+		guessValue2 = params->guessValue2;
+		lowerBound = params->lowerBound;
+		upperBound = params->upperBound;
+		tolerance = params->tolerance;
+		iterationLimit = params->iterationLimit;
+		isErrorRel = params->isErrorRel;
+
+		if (equation != nullptr && eqSolver != nullptr) {
+			delete equation;
+			delete eqSolver;
+		}
 		equation = new C_member_mono_eq<T>(params->classInst, params->monoEquation);
 		eqSolver = new C_monotonic_eq_solver(*equation);
 		eqSolver->settings(tolerance, iterationLimit, lowerBound, upperBound, isErrorRel);
@@ -111,5 +143,8 @@ public:
 		return status;
 	}
 
-	~MonoSolver() {};
+	~MonoSolver() {
+		delete equation;
+		delete eqSolver;
+	};
 };

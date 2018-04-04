@@ -3,10 +3,13 @@
 RegenHX::RegenHX()
 {
 	regenModel = new RegeneratorModel();
+	valves = new valve[4];
 }
 
 RegenHX::~RegenHX()
 {
+	delete regenModel;
+	delete[] valves;
 }
 
 int RegenHX::solveSystem()
@@ -126,7 +129,6 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	setInletStates(T_h_in, P_h_in, m_dot_h, T_c_in, P_c_in, m_dot_c);
 	setDesignTargets(targetModes::UA, UA_target, dP_max_total);
 
-	valve* valves = new valve[4];
 	//High Pressure Low Temperature. T_c_in
 	valves[0].cost = 36000;
 	valves[0].cv = 950;

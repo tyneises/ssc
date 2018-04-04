@@ -12,6 +12,17 @@ string const RegeneratorModel::FATIGUE_TABLE_PATH = PROPERTY_FILES + "fatigue.cs
 RegeneratorModel::RegeneratorModel()
 {
 	loadTables();
+
+	HeatTransfer = new MonoSolver<RegeneratorModel>();
+	HotPressureDrop = new MonoSolver<RegeneratorModel>();
+	ColdPressureDrop = new MonoSolver<RegeneratorModel>();
+	Length = new MonoSolver<RegeneratorModel>();
+	Diameter = new MonoSolver<RegeneratorModel>();
+	PressureSplit = new MonoSolver<RegeneratorModel>();
+	WallThickness = new MonoSolver<RegeneratorModel>();
+	CarryoverMassFlow = new MonoSolver<RegeneratorModel>();
+	Valve = new MonoSolver<RegeneratorModel>();
+
 	valves = new valve[4];
 
 	if (spdlog::get("logger") == nullptr) {
@@ -28,6 +39,25 @@ RegeneratorModel::~RegeneratorModel()
 {
 	spdlog::get("logger")->flush();
 	spdlog::drop("logger");
+
+	delete bedMaterialTable;
+	delete shellMaterialTable;
+	delete insulationMaterialTable;
+	delete regeneratorTable;
+	delete spheresRPTable;
+	delete fatigueTable;
+
+	delete HeatTransfer;
+	delete HotPressureDrop;
+	delete ColdPressureDrop;
+	delete Length;
+	delete Diameter;
+	delete PressureSplit;
+	delete WallThickness;
+	delete CarryoverMassFlow;
+	delete Valve;
+
+	delete[] valves;
 }
 
 void RegeneratorModel::packedspheresNdFit(double Re, double * f, double * j_H)
@@ -410,7 +440,7 @@ void RegeneratorModel::calcValvePressureDrops()
 	Valve_SP.classInst = this;
 	Valve_SP.monoEquation = &RegeneratorModel::Valve_ME;
 
-	Valve = new MonoSolver<RegeneratorModel>(&Valve_SP);
+	Valve->setParameters(&Valve_SP);
 
 	for (int i = 0; i < 4; i++) {
 		valveIndex = i;
@@ -719,13 +749,13 @@ int RegeneratorModel::solveSystem()
 	WallThickness_SP.classInst = this;
 	WallThickness_SP.monoEquation = &RegeneratorModel::WallThickness_ME;
 
-	HeatTransfer = new MonoSolver<RegeneratorModel>(&HeatTransfer_SP);
-	HotPressureDrop = new MonoSolver<RegeneratorModel>(&HotPressureDrop_SP);
-	ColdPressureDrop = new MonoSolver<RegeneratorModel>(&ColdPressureDrop_SP);
-	Length = new MonoSolver<RegeneratorModel>(&Length_SP);
-	Diameter = new MonoSolver<RegeneratorModel>(&Diameter_SP);
-	PressureSplit = new MonoSolver<RegeneratorModel>(&PressureSplit_SP);
-	WallThickness = new MonoSolver<RegeneratorModel>(&WallThickness_SP);
+	HeatTransfer->setParameters(&HeatTransfer_SP);
+	HotPressureDrop->setParameters(&HotPressureDrop_SP);
+	ColdPressureDrop->setParameters(&ColdPressureDrop_SP);
+	Length->setParameters(&Length_SP);
+	Diameter->setParameters(&Diameter_SP);
+	PressureSplit->setParameters(&PressureSplit_SP);
+	WallThickness->setParameters(&WallThickness_SP);
 	
 	int statusSolver = Diameter->solve();
 	if (statusSolver != C_monotonic_eq_solver::CONVERGED) {
@@ -736,7 +766,7 @@ int RegeneratorModel::solveSystem()
 
 	CarryoverMassFlow_SP.guessValue1 = m_dot_carryover;
 	CarryoverMassFlow_SP.guessValue2 = m_dot_carryover + 1;
-	CarryoverMassFlow = new MonoSolver<RegeneratorModel>(&CarryoverMassFlow_SP);
+	CarryoverMassFlow->setParameters(&CarryoverMassFlow_SP);
 	HeatTransfer->updateGuesses(T_H_out - 1, T_H_out);
 	HotPressureDrop->updateGuesses(dP_H - 10, dP_H);
 	ColdPressureDrop->updateGuesses(dP_C - 10, dP_C);

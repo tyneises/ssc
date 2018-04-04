@@ -82,5 +82,5 @@ LookupTable::LookupTable(string filepath)
 
 LookupTable::~LookupTable()
 {
-	delete[] data;
+	delete data;
 }

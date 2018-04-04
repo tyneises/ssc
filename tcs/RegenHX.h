@@ -19,6 +19,7 @@ class RegenHX
 private:
 
 	RegeneratorModel* regenModel;
+	valve* valves;
 
 	double dP_C;
 	double dP_H;
