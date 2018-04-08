@@ -107,7 +107,7 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
 {
 	if (UA_target < 1.E-10) {
-		q_dot = std::numeric_limits<double>::quiet_NaN();
+		q_dot = 0;
 		T_c_out = T_c_in;
 		T_h_out = T_h_in;
 

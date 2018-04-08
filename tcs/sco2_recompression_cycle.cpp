@@ -1861,11 +1861,11 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	ms_des_par.m_DP_LT[1] = 175;*/
 	//ms_des_par.m_DP_HT[0] = 75.95;
 	ms_des_par.m_DP_HT[1] = 216;//175;
-	ms_des_par.m_P_mc_out = 22708.203932;
+	/*ms_des_par.m_P_mc_out = 24036.331530;
 	ms_des_par.m_P_mc_in = 9693.625714;
-	ms_des_par.m_recomp_frac = 0.300000;
-	ms_des_par.m_UA_LT = 8818 - 4409;
-	ms_des_par.m_UA_HT = 4409;
+	ms_des_par.m_recomp_frac = 0;
+	ms_des_par.m_UA_LT = 8818;
+	ms_des_par.m_UA_HT = 0;*/
 
 	if( ms_des_par.m_recomp_frac < 0.01 )
 	{
@@ -1899,8 +1899,6 @@ void C_RecompCycle::design_core_standard(int & error_code)
 
 	C_HTR_HP_dP_des HTR_HP_dP_des_eq(this);
 	C_monotonic_eq_solver HTR_HP_dP_des_solver(HTR_HP_dP_des_eq);
-
-	//double HTR_LP_dP_guess = 216;		//[-] Fraction of HTR HP inlet mass flow lost to carryover
 
 	if (ms_des_par.m_HTR_tech_type == 1)	// m_HTR_tech_type == 1 == recuperator
 	{
@@ -2201,9 +2199,11 @@ int C_RecompCycle::C_HTR_HP_dP_des::operator()(double m_HTR_HP_dP_guess, double 
 
 		if (carryover_des_code != C_monotonic_eq_solver::CONVERGED)
 		{
-			//Dmitrii. I don't know what the correct error code would be
-			spdlog::get("logger")->warn("\t<-}Carryover; code = " + std::to_string(carryover_des_code));
-			return -22;
+			if (isfinite(tol_carryover_des_solved) && tol_carryover_des_solved > 0.01)
+			{
+				spdlog::get("logger")->warn("\t<-}Carryover; code = " + std::to_string(carryover_des_code));
+				return -1;
+			}
 		}
 
 		spdlog::get("logger")->warn("\t<-}Carryover; comass frac = " + std::to_string(f_m_dot_HTR_HPin_carryover) + 
@@ -2223,7 +2223,7 @@ int C_RecompCycle::C_HTR_HP_dP_des::operator()(double m_HTR_HP_dP_guess, double 
 	return 0;
 }
 
-int C_RecompCycle::C_MEQ_carryover_des::operator()(double f_m_dot_HTR_HPin_carryover_guess /*-*/, double *diff_f_m_dot_HTR_HPin_carryover /*-*/)
+int C_RecompCycle::C_MEQ_carryover_des::operator()(double f_m_dot_HTR_HPin_carryover_guess /*-*/, double *diff_f_m_dot_HTR_HPin_carryover /*kg/s*/)
 {
 	spdlog::get("logger")->info("\t\tguess = " + std::to_string(f_m_dot_HTR_HPin_carryover_guess));
 	m_w_rc = m_m_dot_t = m_m_dot_rc = m_m_dot_mc = m_m_dot_carryover = m_Q_dot_LT = m_Q_dot_HT = std::numeric_limits<double>::quiet_NaN();
@@ -2266,7 +2266,7 @@ int C_RecompCycle::C_MEQ_carryover_des::operator()(double f_m_dot_HTR_HPin_carry
 	m_Q_dot_LT = HTR_des_eq.m_Q_dot_LT;
 	m_Q_dot_HT = HTR_des_eq.m_Q_dot_HT;
 
-	*diff_f_m_dot_HTR_HPin_carryover = mpc_rc_cycle->mpc_HTR->get_des_solved()->m_m_dot_carryover - m_m_dot_t*(f_m_dot_HTR_HPin_carryover_guess / (1 - f_m_dot_HTR_HPin_carryover_guess));
+	*diff_f_m_dot_HTR_HPin_carryover = mpc_rc_cycle->mpc_HTR->get_des_solved()->m_m_dot_carryover - m_m_dot_carryover;
 	spdlog::get("logger")->warn("\t\t<-}T_HTR_LP; T_HTR_LP_out = " + std::to_string(T_HTR_LP_out_solved) +
 		", comass = " + std::to_string((m_m_dot_rc + m_m_dot_mc) - m_m_dot_t) +
 		", comass_diff = " + std::to_string(*diff_f_m_dot_HTR_HPin_carryover));

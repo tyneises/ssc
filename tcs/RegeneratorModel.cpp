@@ -729,7 +729,7 @@ int RegeneratorModel::solveSystem()
 	CarryoverMassFlow_SP.solverName = "Carryover Mass Solver";
 	CarryoverMassFlow_SP.target = 0;
 	CarryoverMassFlow_SP.lowerBound = 0;		CarryoverMassFlow_SP.upperBound = min(m_dot_C, m_dot_H);
-	CarryoverMassFlow_SP.tolerance = 0.0001;
+	CarryoverMassFlow_SP.tolerance = 0.001;
 	CarryoverMassFlow_SP.iterationLimit = 50;
 	CarryoverMassFlow_SP.isErrorRel = false;
 	CarryoverMassFlow_SP.classInst = this;
