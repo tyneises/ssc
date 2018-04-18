@@ -1850,22 +1850,21 @@ void C_RecompCycle::design_core_standard(int & error_code)
 {
 	// twn 1.4.17: put reasonable lower bound on *modeled* recompression fraction
 	/*ms_des_par.m_P_mc_out = 25000;
-	ms_des_par.m_P_mc_in = 7870;
-	ms_des_par.m_recomp_frac = 0.3436;
-	ms_des_par.m_T_mc_in = 305.15;
-	ms_des_par.m_T_t_in = 993.15;
-	ms_des_par.m_W_dot_net = 10000;
-	ms_des_par.m_UA_LT = 2908;
-	ms_des_par.m_UA_HT = 5910;
+	ms_des_par.m_P_mc_in = 7627;
+	ms_des_par.m_recomp_frac = 0.3608;
+	ms_des_par.m_UA_LT = 3251.64;
+	ms_des_par.m_UA_HT = 5566.36;*/
 	ms_des_par.m_DP_LT[0] = 175;
-	ms_des_par.m_DP_LT[1] = 175;*/
+	ms_des_par.m_DP_LT[1] = 175;
+	/*ms_des_par.m_DP_HT[0] = 175;
+	ms_des_par.m_DP_HT[1] = 175;*/
 	//ms_des_par.m_DP_HT[0] = 75.95;
 	ms_des_par.m_DP_HT[1] = 216;//175;
-	/*ms_des_par.m_P_mc_out = 24036.331530;
-	ms_des_par.m_P_mc_in = 9693.625714;
-	ms_des_par.m_recomp_frac = 0;
-	ms_des_par.m_UA_LT = 8818;
-	ms_des_par.m_UA_HT = 0;*/
+	/*ms_des_par.m_P_mc_out = 23778.726985;
+	ms_des_par.m_P_mc_in = 7904.154627;
+	ms_des_par.m_recomp_frac = 0.349144;
+	ms_des_par.m_UA_LT = 20000 - 6758.387248;
+	ms_des_par.m_UA_HT = 6758.387248;*/
 
 	if( ms_des_par.m_recomp_frac < 0.01 )
 	{
@@ -1926,10 +1925,10 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		double HTR_HP_dP_des_guess_lower = ms_des_par.m_DP_HT[1] / 3;
 		double HTR_HP_dP_des_guess_upper = ms_des_par.m_DP_HT[1] / 2 + 1;
 
-		spdlog::get("logger")->warn("{->HTR_HP_dP; P_H = " + std::to_string(ms_des_par.m_P_mc_out) + 
+		/*spdlog::get("logger")->warn("{->HTR_HP_dP; P_H = " + std::to_string(ms_des_par.m_P_mc_out) + 
 			", P_L = " + std::to_string(ms_des_par.m_P_mc_in) +
 			", recomp = " + std::to_string(ms_des_par.m_recomp_frac) +
-			", UA_HT = " + std::to_string(ms_des_par.m_UA_HT));
+			", UA_HT = " + std::to_string(ms_des_par.m_UA_HT));*/
 
 		int HTR_HP_dP_des_code = HTR_HP_dP_des_solver.solve(HTR_HP_dP_des_guess_lower, HTR_HP_dP_des_guess_upper, 0,
 			m_HTR_HP_dP_des, tol_HTR_HP_dP_des_solved, iter_HTR_HP_dP_des);
@@ -1938,14 +1937,14 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		{
 			//Dmitrii. I don't know what the correct error code would be
 			error_code = -22;
-			spdlog::get("logger")->warn("<-}HTR_HP_dP; code = " + std::to_string(HTR_HP_dP_des_code));
+			//spdlog::get("logger")->warn("<-}HTR_HP_dP; code = " + std::to_string(HTR_HP_dP_des_code));
 			return;
 		}
 
-		spdlog::get("logger")->warn("<-}HTR_HP_dP; HP_dP = " + std::to_string(ms_des_par.m_DP_HT[0]) +
+		/*spdlog::get("logger")->warn("<-}HTR_HP_dP; HP_dP = " + std::to_string(ms_des_par.m_DP_HT[0]) +
 			", m_dot = " + std::to_string(HTR_HP_dP_des_eq.m_m_dot_t) +
 			", comass = " + std::to_string(HTR_HP_dP_des_eq.m_m_dot_carryover) +
-			", UA_HT = " + std::to_string(ms_des_par.m_UA_HT));
+			", UA_HT = " + std::to_string(ms_des_par.m_UA_HT));*/
 	}
 	
 	// Get information calculated in HTR_HP_dP_des_eq
@@ -2007,7 +2006,7 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		m_objective_metric_last = m_eta_thermal_calc_last;
 	}
 
-	spdlog::get("logger")->error("Cycle Eff = " + std::to_string(m_eta_thermal_calc_last));
+	//spdlog::get("logger")->error("Cycle Eff = " + std::to_string(m_eta_thermal_calc_last));
 
 	m_m_dot_mc = m_dot_mc;
 	m_m_dot_rc = m_dot_rc;
@@ -2017,7 +2016,7 @@ void C_RecompCycle::design_core_standard(int & error_code)
 int C_RecompCycle::C_HTR_HP_dP_des::operator()(double m_HTR_HP_dP_guess, double * diff_m_HTR_HP_dP)
 {
 	mpc_rc_cycle->ms_des_par.m_DP_HT[0] = m_HTR_HP_dP_guess;
-	spdlog::get("logger")->info("\tguess = " + std::to_string(m_HTR_HP_dP_guess));
+	//spdlog::get("logger")->info("\tguess = " + std::to_string(m_HTR_HP_dP_guess));
 
 	// Apply pressure drops to heat exchangers, fully defining the pressures at all states
 	if (mpc_rc_cycle->ms_des_par.m_DP_LT[0] < 0.0)
@@ -2193,21 +2192,39 @@ int C_RecompCycle::C_HTR_HP_dP_des::operator()(double m_HTR_HP_dP_guess, double 
 		double carryover_des_guess_lower = 0;
 		double carryover_des_guess_upper = 0.005;
 
-		spdlog::get("logger")->warn("\t{->Carryover");
-		int carryover_des_code = carryover_des_solver.solve(carryover_des_guess_lower, carryover_des_guess_upper, 0,
+		C_monotonic_eq_solver::S_xy_pair pair_upper;
+		pair_upper.x = carryover_des_guess_upper;
+		int carryover_des_code = carryover_des_solver.test_member_function(carryover_des_guess_upper, &pair_upper.y);
+		if (carryover_des_code != 0)
+		{
+			return -1;
+		}
+
+		C_monotonic_eq_solver::S_xy_pair pair_lower;
+		pair_lower.x = carryover_des_guess_lower;
+		carryover_des_code = carryover_des_solver.test_member_function(carryover_des_guess_lower, &pair_lower.y);
+		if (carryover_des_code != 0)
+		{
+			return -1;
+		}
+
+		double m_m_dot_t_normal = carryover_des_eq.m_m_dot_t;
+
+		//spdlog::get("logger")->warn("\t{->Carryover");
+		carryover_des_code = carryover_des_solver.solve(pair_lower, pair_upper, 0,
 			f_m_dot_HTR_HPin_carryover, tol_carryover_des_solved, iter_carryover_des);
 
 		if (carryover_des_code != C_monotonic_eq_solver::CONVERGED)
 		{
-			if (isfinite(tol_carryover_des_solved) && tol_carryover_des_solved > 0.01)
+			if (isfinite(tol_carryover_des_solved) && tol_carryover_des_solved / m_m_dot_t_normal > 0.001)
 			{
-				spdlog::get("logger")->warn("\t<-}Carryover; code = " + std::to_string(carryover_des_code));
+				//spdlog::get("logger")->warn("\t<-}Carryover; code = " + std::to_string(carryover_des_code));
 				return -1;
 			}
 		}
 
-		spdlog::get("logger")->warn("\t<-}Carryover; comass frac = " + std::to_string(f_m_dot_HTR_HPin_carryover) + 
-			", comass = " + std::to_string(carryover_des_eq.m_m_dot_carryover));
+		/*spdlog::get("logger")->warn("\t<-}Carryover; comass frac = " + std::to_string(f_m_dot_HTR_HPin_carryover) + 
+			", comass = " + std::to_string(carryover_des_eq.m_m_dot_carryover));*/
 	}
 	
 	m_w_rc = carryover_des_eq.m_w_rc;
@@ -2219,13 +2236,13 @@ int C_RecompCycle::C_HTR_HP_dP_des::operator()(double m_HTR_HP_dP_guess, double 
 	m_Q_dot_HT = carryover_des_eq.m_Q_dot_HT;
 
 	*diff_m_HTR_HP_dP = m_HTR_HP_dP_guess - mpc_rc_cycle->mpc_HTR->get_des_solved()->m_DP_cold_des;
-	spdlog::get("logger")->warn("\tHTR_HP_dP_diff = " + std::to_string(*diff_m_HTR_HP_dP));
+	//spdlog::get("logger")->warn("\tHTR_HP_dP_diff = " + std::to_string(*diff_m_HTR_HP_dP));
 	return 0;
 }
 
-int C_RecompCycle::C_MEQ_carryover_des::operator()(double f_m_dot_HTR_HPin_carryover_guess /*-*/, double *diff_f_m_dot_HTR_HPin_carryover /*kg/s*/)
+int C_RecompCycle::C_MEQ_carryover_des::operator()(double f_m_dot_HTR_HPin_carryover_guess /*-*/, double *diff_m_dot_HTR_HPin_carryover /*kg/s*/)
 {
-	spdlog::get("logger")->info("\t\tguess = " + std::to_string(f_m_dot_HTR_HPin_carryover_guess));
+	//spdlog::get("logger")->info("\t\tguess = " + std::to_string(f_m_dot_HTR_HPin_carryover_guess));
 	m_w_rc = m_m_dot_t = m_m_dot_rc = m_m_dot_mc = m_m_dot_carryover = m_Q_dot_LT = m_Q_dot_HT = std::numeric_limits<double>::quiet_NaN();
 
 	// ****************************************************
@@ -2241,19 +2258,20 @@ int C_RecompCycle::C_MEQ_carryover_des::operator()(double f_m_dot_HTR_HPin_carry
 	C_monotonic_eq_solver HTR_des_solver(HTR_des_eq);
 
 	HTR_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol*mpc_rc_cycle->m_temp_last[MC_IN], 1000, T_HTR_LP_out_lower, T_HTR_LP_out_upper, false);
+	//HTR_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol, 1000, T_HTR_LP_out_lower, T_HTR_LP_out_upper, false);
 
 	double T_HTR_LP_out_solved, tol_T_HTR_LP_out_solved;
 	T_HTR_LP_out_solved = tol_T_HTR_LP_out_solved = std::numeric_limits<double>::quiet_NaN();
 	int iter_T_HTR_LP_out = -1;
 
-	spdlog::get("logger")->warn("\t\t{->T_HTR_LP");
+	//spdlog::get("logger")->warn("\t\t{->T_HTR_LP");
 	int T_HTR_LP_out_code = HTR_des_solver.solve(T_HTR_LP_out_guess_lower, T_HTR_LP_out_guess_upper, 0,
 		T_HTR_LP_out_solved, tol_T_HTR_LP_out_solved, iter_T_HTR_LP_out);
 
 	if (T_HTR_LP_out_code != C_monotonic_eq_solver::CONVERGED)
 	{
-		*diff_f_m_dot_HTR_HPin_carryover = std::numeric_limits<double>::quiet_NaN();
-		spdlog::get("logger")->warn("\t\t<-}T_HTR_LP; code = " + std::to_string(T_HTR_LP_out_code));
+		*diff_m_dot_HTR_HPin_carryover = std::numeric_limits<double>::quiet_NaN();
+		//spdlog::get("logger")->warn("\t\t<-}T_HTR_LP; code = " + std::to_string(T_HTR_LP_out_code));
 		return 35;
 	}
 
@@ -2266,17 +2284,17 @@ int C_RecompCycle::C_MEQ_carryover_des::operator()(double f_m_dot_HTR_HPin_carry
 	m_Q_dot_LT = HTR_des_eq.m_Q_dot_LT;
 	m_Q_dot_HT = HTR_des_eq.m_Q_dot_HT;
 
-	*diff_f_m_dot_HTR_HPin_carryover = mpc_rc_cycle->mpc_HTR->get_des_solved()->m_m_dot_carryover - m_m_dot_carryover;
-	spdlog::get("logger")->warn("\t\t<-}T_HTR_LP; T_HTR_LP_out = " + std::to_string(T_HTR_LP_out_solved) +
+	*diff_m_dot_HTR_HPin_carryover = mpc_rc_cycle->mpc_HTR->get_des_solved()->m_m_dot_carryover - m_m_dot_carryover;
+	/*spdlog::get("logger")->warn("\t\t<-}T_HTR_LP; T_HTR_LP_out = " + std::to_string(T_HTR_LP_out_solved) +
 		", comass = " + std::to_string((m_m_dot_rc + m_m_dot_mc) - m_m_dot_t) +
-		", comass_diff = " + std::to_string(*diff_f_m_dot_HTR_HPin_carryover));
+		", comass_diff = " + std::to_string(*diff_m_dot_HTR_HPin_carryover));*/
 
 	return 0;
 }
 
 int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, double *diff_T_LTR_LP_out /*K*/)
 {
-	spdlog::get("logger")->info("\t\t\t\tguess = " + std::to_string(T_LTR_LP_out));
+	//spdlog::get("logger")->info("\t\t\t\tguess = " + std::to_string(T_LTR_LP_out));
 	m_w_rc = m_m_dot_t = m_m_dot_rc = m_m_dot_mc = m_Q_dot_LT = std::numeric_limits<double>::quiet_NaN();
 	
 	mpc_rc_cycle->m_temp_last[LTR_LP_OUT] = T_LTR_LP_out;
@@ -2334,19 +2352,21 @@ int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, doub
 		mpc_rc_cycle->m_dens_last[RC_OUT] = mpc_rc_cycle->m_dens_last[LTR_LP_OUT];
 	}
 
-	double m_dot_HTR_in = mpc_rc_cycle->ms_des_par.m_W_dot_net / 
+	m_m_dot_t = mpc_rc_cycle->ms_des_par.m_W_dot_net /
 		(m_w_mc*(1.0 - mpc_rc_cycle->ms_des_par.m_recomp_frac) + 
-			m_w_rc * mpc_rc_cycle->ms_des_par.m_recomp_frac + m_w_t*(1.0 - m_f_m_dot_HTR_HPin_carryover));		//[kg/s]
-
-	m_m_dot_t = m_dot_HTR_in*(1.0 - m_f_m_dot_HTR_HPin_carryover);		//[kg/s]
-	m_m_dot_rc = m_dot_HTR_in * mpc_rc_cycle->ms_des_par.m_recomp_frac;		//[kg/s]
-	m_m_dot_mc = m_dot_HTR_in - m_m_dot_rc;			//[kg/s]
+			m_w_rc * mpc_rc_cycle->ms_des_par.m_recomp_frac + m_w_t);		//[kg/s]
 
 	if (m_m_dot_t < 0.0)
 	{
 		*diff_T_LTR_LP_out = std::numeric_limits<double>::quiet_NaN();
 		return 29;
 	}
+
+	double m_dot_HTR_in = m_m_dot_t / (1.0 - m_f_m_dot_HTR_HPin_carryover);		//[kg/s]
+	m_m_dot_rc = m_dot_HTR_in * mpc_rc_cycle->ms_des_par.m_recomp_frac;		//[kg/s]
+	m_m_dot_mc = m_dot_HTR_in - m_m_dot_rc;			//[kg/s]
+
+	
 
 	double T_LTR_LP_out_calc = std::numeric_limits<double>::quiet_NaN();
 
@@ -2365,13 +2385,13 @@ int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, doub
 	}
 
 	*diff_T_LTR_LP_out = T_LTR_LP_out_calc - mpc_rc_cycle->m_temp_last[LTR_LP_OUT];		//[K]
-	spdlog::get("logger")->info("\t\t\t\tT_LTR_LP_out_diff = " + std::to_string(*diff_T_LTR_LP_out));
+	//spdlog::get("logger")->info("\t\t\t\tT_LTR_LP_out_diff = " + std::to_string(*diff_T_LTR_LP_out));
 	return 0;
 }
 
 int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, double *diff_T_HTR_LP_out /*K*/)
 {
-	spdlog::get("logger")->info("\t\t\tguess = " + std::to_string(T_HTR_LP_out));
+	//spdlog::get("logger")->info("\t\t\tguess = " + std::to_string(T_HTR_LP_out));
 	m_w_rc = m_m_dot_t = m_m_dot_rc = m_m_dot_mc = 
 		m_Q_dot_LT = m_Q_dot_HT =
 		m_diff_mdot_HTR_HPin_carryover = std::numeric_limits<double>::quiet_NaN();	
@@ -2401,19 +2421,21 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	C_monotonic_eq_solver LTR_des_solver(LTR_des_eq);
 
 	LTR_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol*mpc_rc_cycle->m_temp_last[MC_IN], 1000, T_LTR_LP_out_lower,
-								T_LTR_LP_out_upper, false);
+																				T_LTR_LP_out_upper, false);
+	/*LTR_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol/2, 1000, T_LTR_LP_out_lower,
+								T_LTR_LP_out_upper, false);*/
 
 	double T_LTR_LP_out_solved, tol_T_LTR_LP_out_solved;
 	T_LTR_LP_out_solved = tol_T_LTR_LP_out_solved = std::numeric_limits<double>::quiet_NaN();
 	int iter_T_LTR_LP_out = -1;
 
-	spdlog::get("logger")->warn("\t\t\t{->T_LTR_LP");
+	//spdlog::get("logger")->warn("\t\t\t{->T_LTR_LP");
 	int T_LTR_LP_out_code = LTR_des_solver.solve(T_LTR_LP_out_guess_lower, T_LTR_LP_out_guess_upper, 0,
 		T_LTR_LP_out_solved, tol_T_LTR_LP_out_solved, iter_T_LTR_LP_out);
 
 	if( T_LTR_LP_out_code != C_monotonic_eq_solver::CONVERGED )
 	{
-		spdlog::get("logger")->warn("\t\t\t<-}T_LTR_LP; code = " + std::to_string(T_LTR_LP_out_code));
+		//spdlog::get("logger")->warn("\t\t\t<-}T_LTR_LP; code = " + std::to_string(T_LTR_LP_out_code));
 		return 31;
 	}
 
@@ -2427,8 +2449,8 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	// Calculate mass flow rate through HTR with consideration that it could include carry-over
 	double m_dot_HTR_in = m_m_dot_rc + m_m_dot_mc;		//[kg/s]
 
-	spdlog::get("logger")->warn("\t\t\t<-}T_LTR_LP; T_LTR_LP_out = " + std::to_string(T_LTR_LP_out_solved) +
-		", m_dot_HTR_in = " + std::to_string(m_dot_HTR_in));
+	/*spdlog::get("logger")->warn("\t\t\t<-}T_LTR_LP; T_LTR_LP_out = " + std::to_string(T_LTR_LP_out_solved) +
+		", m_dot_HTR_in = " + std::to_string(m_dot_HTR_in));*/
 
 	// Know LTR performance so we can calculate the HP outlet
 		// Energy balance on LTR HP stream
@@ -2477,23 +2499,13 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	}
 	catch( C_csp_exception & )
 	{
-		spdlog::get("logger")->critical("\t\t\tREGEN_MODEL_FAILED");
+		//spdlog::get("logger")->critical("\t\t\tREGEN_MODEL_FAILED");
 		*diff_T_HTR_LP_out = std::numeric_limits<double>::quiet_NaN();
 		return -1;
 	}
-	
-	// Calculate difference between calculated and guessed carry-over fractions
-		// Guess
-	//double f_m_dot_carryover_guess = m_f_m_dot_HTR_HPin_carryover;
-	//double m_dot_carryover_guess = m_dot_HTR_in - m_m_dot_t;
-		// Calculated
-
-	//double m_dot_carryover_calc = mpc_rc_cycle->mpc_HTR->get_des_solved()->m_m_dot_carryover;		// Get this from HX solution
-	
-	//m_diff_mdot_HTR_HPin_carryover = m_dot_carryover_calc - m_dot_carryover_guess;	//[kg/s]
 
 	*diff_T_HTR_LP_out = T_HTR_LP_out_calc - mpc_rc_cycle->m_temp_last[HTR_LP_OUT];		//[K]	
-	spdlog::get("logger")->info("\t\t\tT_HTR_LP_out_diff = " + std::to_string(*diff_T_HTR_LP_out));
+	//spdlog::get("logger")->info("\t\t\tT_HTR_LP_out_diff = " + std::to_string(*diff_T_HTR_LP_out));
 	return 0;
 }
 
@@ -3393,7 +3405,7 @@ void C_RecompCycle::finalize_design(int & error_code)
 	ms_des_solved.ms_t_des_solved = *m_t.get_design_solved();
 	ms_des_solved.ms_LTR_des_solved = mc_LT_recup.ms_des_solved;
 	ms_des_solved.ms_HTR_des_solved = *mpc_HTR->get_des_solved(); // mc_HT_recup.ms_des_solved;
-
+	
 	// Set solved design point metrics
 	ms_des_solved.m_temp = m_temp_last;
 	ms_des_solved.m_pres = m_pres_last;
@@ -3411,6 +3423,18 @@ void C_RecompCycle::finalize_design(int & error_code)
 	ms_des_solved.m_UA_LTR = ms_des_par.m_UA_LT;
 	ms_des_solved.m_UA_HTR = ms_des_par.m_UA_HT;
 
+	spdlog::get("logger")->info(std::to_string(ms_des_par.m_UA_HT + ms_des_par.m_UA_LT) +
+		", " + std::to_string(m_pres_last[MC_IN]) +
+		", " + std::to_string(m_pres_last[MC_OUT]) +
+		", " + std::to_string(m_eta_thermal_calc_last) +
+		", " + std::to_string(ms_des_solved.m_recomp_frac) +
+		", " + std::to_string(m_m_dot_t) +
+		", " + std::to_string(ms_des_par.m_UA_HT) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_eff_design) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_NTU_design) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_m_dot_carryover) +
+		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_eff_design) +
+		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_NTU_design));
 }
 
 //void C_RecompCycle::off_design(S_od_parameters & od_par_in, int & error_code)

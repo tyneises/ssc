@@ -5,10 +5,10 @@ file_dir = 'c:/Users/tneises/Documents/Projects/ssc_trunk/examples/';
 	// System Design
 var('htf', 17);					//[-] Integer code for HTF, 17: Salt_60_NaNO3_40_KNO3
 var('htf_props', [[0]]);		//[-] Custom HTF props (only used if htf = 50)
-T_htf_hot_des = 720.0;			//[C]
+T_htf_hot_des = 740.0;			//[C]
 var('T_htf_hot_des', T_htf_hot_des);		//[C] HTF design hot temperature (PHX inlet)
 var('dT_PHX_hot_approach', 20);	//[C] Temp diff between hot HTF and turbine inlet
-T_amb_des = 30.0;				//[C] Ambient temperature at design
+T_amb_des = 17.0;				//[C] Ambient temperature at design
 var('T_amb_des', T_amb_des);			//[C] Ambient temperature at design
 var('dT_mc_approach', 15);		//[C] Temperature difference between main compressor CO2 inlet and ambient air
 var('site_elevation', 300);		//[m] Site elevation (used to calculate air density in air cooler design model)
@@ -34,7 +34,7 @@ var('eta_isen_rc', 0.88);		//[-] Re-compressor isentropic efficiency
 var('eta_isen_t', 0.92);		//[-] Turbine isentropic efficiency
 eta_max = 0.98;
 var('LT_recup_eff_max', eta_max);	//[-] Maximum possible effectiveness in LT recuperator
-var('HT_recup_eff_max', eta_max);	//[-] Maximum possible effectiveness in HT recuperator
+var('HT_recup_eff_max', 1);	//[-] Maximum possible effectiveness in HT recuperator
 var('P_high_limit',25);			//[MPa] Cycle high pressure limit
 	// PHX design
 var('dT_PHX_cold_approach', 20);	//[C] Temperature difference between cold HTF and cold CO2 PHX inlet
@@ -188,9 +188,15 @@ if( false )
 //var('T_amb_od_in',[45,44,43,42,41,40,39,38,37,36,36,34,33,32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15]);		//[C]
 
 // Run Model
-start_timer();
-run('sco2_csp_system');
-outln(elapsed_time());
+for(UA = 7500; UA >= 2500; UA = UA - 2500)
+{
+	outln(UA);
+	var('UA_recup_tot_des', UA);
+	start_timer();
+	run('sco2_csp_system');
+	outln(elapsed_time());
+}
+
  
 if( is_gen_od_polynomials == 1 )
 {

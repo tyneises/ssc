@@ -803,7 +803,7 @@ public:
 		// These values are passed in as arguments to Constructor call and should not be reset
 		double m_w_mc, m_w_t;
 
-		virtual int operator()(double f_m_dot_HTR_HPin_carryover_guess /*-*/, double *diff_f_m_dot_HTR_HPin_carryover /*-*/);
+		virtual int operator()(double f_m_dot_HTR_HPin_carryover_guess /*-*/, double *diff_m_dot_HTR_HPin_carryover /*kg/s*/);
 	};
 
 	class C_mono_eq_HTR_des : public C_monotonic_equation

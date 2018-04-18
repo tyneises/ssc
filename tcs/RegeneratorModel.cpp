@@ -30,8 +30,8 @@ RegeneratorModel::RegeneratorModel()
 		spdlog::flush_on(spdlog::level::info);
 		spdlog::drop("logger");
 		spdlog::register_logger(logger);
-		spdlog::set_pattern("[%H:%M:%S] [%l] %v");
-		//spdlog::set_pattern("%v");
+		//spdlog::set_pattern("[%H:%M:%S] [%l] %v");
+		spdlog::set_pattern("%v");
 	}
 }
 
@@ -448,7 +448,7 @@ int RegeneratorModel::HeatTransfer_ME(double T_H_out, double * QdotAsDifference)
 
 	this->T_H_out = T_H_out;
 
-	if (T_H_out > T_H_in) {
+	if (T_H_out > T_H_in || T_H_out < T_C_in) {
 		return -1;
 	}
 
