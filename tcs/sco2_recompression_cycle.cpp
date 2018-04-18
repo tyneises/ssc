@@ -2835,18 +2835,26 @@ void C_RecompCycle::auto_opt_design_core(int & error_code)
 	// Outer optimization loop
 	m_objective_metric_auto_opt = 0.0;
 
-	double P_low_limit = std::min(ms_auto_opt_des_par.m_P_high_limit, std::max(10.E3, ms_auto_opt_des_par.m_P_high_limit*0.2));		//[kPa]
-	//Dmitrii temp edit!
-	P_low_limit = 19000;
-	double best_P_high = fminbr(
-		P_low_limit, ms_auto_opt_des_par.m_P_high_limit, &fmin_cb_opt_des_fixed_P_high, this, 1.0);
+	//double P_low_limit = std::min(ms_auto_opt_des_par.m_P_high_limit, std::max(10.E3, ms_auto_opt_des_par.m_P_high_limit*0.2));		//[kPa]
+	////Dmitrii temp edit!
+	//P_low_limit = 19000;
+	//double best_P_high = fminbr(
+	//	P_low_limit, ms_auto_opt_des_par.m_P_high_limit, &fmin_cb_opt_des_fixed_P_high, this, 1.0);
 
 	// These should be set:
 	// ms_des_par_optimal;
 	// m_eta_thermal_opt;
 
 	// Check model with P_mc_out set at P_high_limit for a recompression and simple cycle and use the better configuration
-	double PR_mc_guess = ms_des_par_auto_opt.m_P_mc_out / ms_des_par_auto_opt.m_P_mc_in;
+	// double PR_mc_guess = ms_des_par_auto_opt.m_P_mc_out / ms_des_par_auto_opt.m_P_mc_in;
+
+
+
+	double PR_mc_guess = 1.1;
+	if (ms_auto_opt_des_par.m_P_high_limit > P_pseudocritical_1(ms_opt_des_par.m_T_mc_in))
+		PR_mc_guess = ms_auto_opt_des_par.m_P_high_limit / P_pseudocritical_1(ms_opt_des_par.m_T_mc_in);
+
+
 
 	if( ms_auto_opt_des_par.m_is_recomp_ok )
 	{
@@ -2881,36 +2889,38 @@ void C_RecompCycle::auto_opt_design_core(int & error_code)
 			m_objective_metric_auto_opt = m_objective_metric_opt;
 		}
 	}
-
-	// Complete 'ms_opt_des_par' for simple cycle
-	ms_opt_des_par.m_P_mc_out_guess = ms_auto_opt_des_par.m_P_high_limit;
-	ms_opt_des_par.m_fixed_P_mc_out = true;
-	
-	//ms_opt_des_par.m_PR_mc_guess = PR_mc_guess;
-	//ms_opt_des_par.m_fixed_PR_mc = false;
-	ms_opt_des_par.m_fixed_PR_mc = ms_auto_opt_des_par.m_fixed_PR_mc;	//[-]
-	if (ms_opt_des_par.m_fixed_PR_mc)
-	{
-		ms_opt_des_par.m_PR_mc_guess = ms_auto_opt_des_par.m_PR_mc_guess;	//[-]
-	}
 	else
 	{
-		ms_opt_des_par.m_PR_mc_guess = PR_mc_guess;		//[-]
-	}
+		// Complete 'ms_opt_des_par' for simple cycle
+		ms_opt_des_par.m_P_mc_out_guess = ms_auto_opt_des_par.m_P_high_limit;
+		ms_opt_des_par.m_fixed_P_mc_out = true;
 
-	ms_opt_des_par.m_recomp_frac_guess = 0.0;
-	ms_opt_des_par.m_fixed_recomp_frac = true;
-	ms_opt_des_par.m_LT_frac_guess = 1.0;
-	ms_opt_des_par.m_fixed_LT_frac = true;
+		//ms_opt_des_par.m_PR_mc_guess = PR_mc_guess;
+		//ms_opt_des_par.m_fixed_PR_mc = false;
+		ms_opt_des_par.m_fixed_PR_mc = ms_auto_opt_des_par.m_fixed_PR_mc;	//[-]
+		if (ms_opt_des_par.m_fixed_PR_mc)
+		{
+			ms_opt_des_par.m_PR_mc_guess = ms_auto_opt_des_par.m_PR_mc_guess;	//[-]
+		}
+		else
+		{
+			ms_opt_des_par.m_PR_mc_guess = PR_mc_guess;		//[-]
+		}
 
-	int s_error_code = 0;
+		ms_opt_des_par.m_recomp_frac_guess = 0.0;
+		ms_opt_des_par.m_fixed_recomp_frac = true;
+		ms_opt_des_par.m_LT_frac_guess = 1.0;
+		ms_opt_des_par.m_fixed_LT_frac = true;
 
-	opt_design_core(s_error_code);
+		int s_error_code = 0;
 
-	if( s_error_code == 0 && m_objective_metric_opt > m_objective_metric_auto_opt )
-	{
-		ms_des_par_auto_opt = ms_des_par_optimal;
-		m_objective_metric_auto_opt = m_objective_metric_opt;
+		opt_design_core(s_error_code);
+
+		if (s_error_code == 0 && m_objective_metric_opt > m_objective_metric_auto_opt)
+		{
+			ms_des_par_auto_opt = ms_des_par_optimal;
+			m_objective_metric_auto_opt = m_objective_metric_opt;
+		}
 	}
 
 	ms_des_par = ms_des_par_auto_opt;
