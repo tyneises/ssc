@@ -55,6 +55,7 @@
 #include "htf_props.h"
 #include "lib_util.h"
 #include "numeric_solvers.h"
+#include "LookupTable_1D.h"
 
 #include "csp_solver_util.h"
 
@@ -182,6 +183,7 @@ class C_HX_counterflow
 protected:
 	bool m_is_HX_initialized;		//[-] True = yes!
 	bool m_is_HX_designed;			//[-] True = yes!
+	LookupTable_1D* recupCostCurveTable; // Pointer to a lookup table that allows to calculate the cost of a recuperator based on UA
 
 public:
 
@@ -227,6 +229,8 @@ public:
 	{
 		double m_Q_dot_design;		//[kWt] Design-point heat transfer
 		double m_UA_design_total;		//[kW/K] Design-point conductance
+		double m_aUA_design_total;		//[kW/K] Conductance
+		double m_cost_design_total;		//[$] Cost
 		double m_min_DT_design;			//[K] Minimum temperature difference in heat exchanger
 		double m_eff_design;			//[-] Effectiveness at design
 		double m_NTU_design;			//[-] NTU at design
@@ -235,12 +239,14 @@ public:
 		double m_DP_cold_des;			//[kPa] cold fluid design pressure drop
 		double m_DP_hot_des;			//[kPa] hot fluid design pressure drop
 		double m_m_dot_carryover;			//[kg/s] Carryover massflow. Only applicable to regenerator
+		bool m_eff_limited;				//Flag that is raised if HX performance is limited by maximum allowed effectiveness
 
 		S_des_solved()
 		{
-			m_Q_dot_design = m_UA_design_total = m_min_DT_design = m_eff_design = m_NTU_design =
-				m_T_h_out = m_T_c_out =
+			m_Q_dot_design = m_UA_design_total = m_aUA_design_total = m_cost_design_total = m_min_DT_design = m_eff_design = 
+				m_NTU_design = m_T_h_out = m_T_c_out =
 				m_DP_cold_des = m_DP_hot_des = m_m_dot_carryover = std::numeric_limits<double>::quiet_NaN();
+			m_eff_limited = false;
 		}
 	};
 
@@ -292,6 +298,7 @@ public:
 	water_state ms_water_props;
 
 	C_HX_counterflow();
+	~C_HX_counterflow();
 
 	void design_calc_UA(C_HX_counterflow::S_des_calc_UA_par des_par, 
 		double q_dot_design /*kWt*/, C_HX_counterflow::S_des_solved &des_solved);
@@ -308,6 +315,15 @@ public:
 		double & UA /*kW/K*/, double & min_DT /*C*/, double & eff /*-*/, double & NTU /*-*/, double & h_h_out /*K*/, double & h_c_out /*K*/, double & q_dot_calc /*kWt*/);
 
 	void design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/,
+		double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);
+
+	double calc_UA_from_cost(double cost /*$*/);
+
+	double calc_cost_from_UA(double UA /*kW/K*/);
+
+	void design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetValue /*?*/, double eff_target /*-*/,
 		double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
 		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);

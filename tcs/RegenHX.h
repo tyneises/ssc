@@ -39,7 +39,7 @@ private:
 	double m_dot_carryover;
 	double m_HTR_LP_dP, m_HTR_HP_dP;
 
-	/*! \brief Number of (hot module + cold module) sets in heat exchenger. [-]
+	/*! \brief Number of (hot module + cold module) sets in heat exchanger. [-]
 		
 		Heat exchanger needs two modules. One for the hot flow and one for cold flow.
 		Hot flow + cold flow modules form a set.
@@ -58,6 +58,8 @@ private:
 		RegeneratorMModel::costModule * numberOfModulesTotal bed modules.
 	*/
 	double costHX;
+
+	double costValves;
 
 	void resetDesignStructure();
 
@@ -121,6 +123,7 @@ public:
 
 	double getD_fr() { return D_fr; }
 	double getL() { return L; }
+	double getCost() { return costHX; }
 
 	//! Constructor that calls RegenHX::loadTables()
 	RegenHX();
@@ -131,6 +134,10 @@ public:
 	double od_delta_p_hot(double m_dot_h /*kg/s*/);
 
 	void design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
+		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);
+
+	void design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetValue /*kW/K or $*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
 		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);
 

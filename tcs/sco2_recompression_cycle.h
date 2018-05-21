@@ -97,6 +97,10 @@ public:
 		std::vector<double> m_DP_PHX;		//(cold, hot) positive values are absolute [kPa], negative values are relative (-)
 		double m_UA_LT;						//[kW/K] UA in LTR
 		double m_UA_HT;						//[kW/K] UA in HTR
+		double m_aUA_LT;					//[kW/K] Actual UA in LTR
+		double m_aUA_HT;					//[kW/K] Actrual UA in HTR
+		double m_cost_LT;					//[$] Cost of LTR
+		double m_cost_HT;					//[$] Cost of HTR
 		int m_HTR_tech_type;				//[-] 1: Counterflow PCHE, 2: Regenerator
 		double m_LT_eff_max;				//[-] Maximum allowable effectiveness in LT recuperator
 		double m_HT_eff_max;				//[-] Maximum allowable effectiveness in HT recuperator
@@ -109,17 +113,21 @@ public:
 		double m_tol;						//[-] Convergence tolerance
 		double m_N_turbine;					//[rpm] Turbine shaft speed (negative values link turbine to compressor)
 
+		int m_des_HX_target_type;		//0: UA, 1: Cost
 		int m_des_objective_type;		//[2] = min phx deltat then max eta, [else] max eta
 		double m_min_phx_deltaT;		//[C]
 
 		S_design_parameters()
 		{
-			m_W_dot_net = m_T_mc_in = m_T_t_in = m_P_mc_in = m_P_mc_out = m_UA_LT = m_UA_HT = m_LT_eff_max = m_HT_eff_max = m_recomp_frac = 
+			m_W_dot_net = m_T_mc_in = m_T_t_in = m_P_mc_in = m_P_mc_out = m_UA_LT = m_UA_HT = 
+				m_aUA_LT = m_aUA_HT = m_cost_LT = m_cost_HT =
+				m_LT_eff_max = m_HT_eff_max = m_recomp_frac = 
 				m_eta_mc = m_eta_rc = m_eta_t = m_P_high_limit = m_tol = m_N_turbine = std::numeric_limits<double>::quiet_NaN();
 			m_N_sub_hxrs = -1;
 
 			// Default to PCHE for HTR
 			m_HTR_tech_type = 2;
+			m_des_HX_target_type = 1;
 
 			// Default to standard optimization to maximize cycle efficiency
 			m_des_objective_type = 1;
@@ -866,6 +874,10 @@ public:
 	// Called by 'nlopt...', so needs to be public
 	//double opt_od_eta(const std::vector<double> &x);
 };
+
+double nlopt_HTR_eff_ineq(const std::vector<double> &x, std::vector<double> &grad, void *data);
+
+double nlopt_LTR_eff_ineq(const std::vector<double> &x, std::vector<double> &grad, void *data);
 
 double nlopt_cb_opt_des(const std::vector<double> &x, std::vector<double> &grad, void *data);
 

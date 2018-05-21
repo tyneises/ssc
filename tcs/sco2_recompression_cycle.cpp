@@ -1850,21 +1850,28 @@ void C_RecompCycle::design_core_standard(int & error_code)
 {
 	// twn 1.4.17: put reasonable lower bound on *modeled* recompression fraction
 	/*ms_des_par.m_P_mc_out = 25000;
-	ms_des_par.m_P_mc_in = 7627;
-	ms_des_par.m_recomp_frac = 0.3608;
-	ms_des_par.m_UA_LT = 3251.64;
-	ms_des_par.m_UA_HT = 5566.36;*/
+	ms_des_par.m_P_mc_in = 7870;
+	ms_des_par.m_recomp_frac = 0.3436;
+	ms_des_par.m_UA_LT = 2908;
+	ms_des_par.m_UA_HT = 5910;*/
+
+	/*ms_des_par.m_P_mc_out = 25000;
+	ms_des_par.m_P_mc_in = 7870;
+	ms_des_par.m_recomp_frac = 0.3436;
+	ms_des_par.m_UA_LT = 6948000;
+	ms_des_par.m_UA_HT = 682621;*/
+	
 	ms_des_par.m_DP_LT[0] = 175;
 	ms_des_par.m_DP_LT[1] = 175;
 	/*ms_des_par.m_DP_HT[0] = 175;
 	ms_des_par.m_DP_HT[1] = 175;*/
 	//ms_des_par.m_DP_HT[0] = 75.95;
 	ms_des_par.m_DP_HT[1] = 216;//175;
-	/*ms_des_par.m_P_mc_out = 23778.726985;
-	ms_des_par.m_P_mc_in = 7904.154627;
-	ms_des_par.m_recomp_frac = 0.349144;
-	ms_des_par.m_UA_LT = 20000 - 6758.387248;
-	ms_des_par.m_UA_HT = 6758.387248;*/
+	/*ms_des_par.m_P_mc_out = 25000;
+	ms_des_par.m_P_mc_in = 6735.210923;
+	ms_des_par.m_recomp_frac = 0.35;
+	ms_des_par.m_UA_LT = 7500000 - 3750000;
+	ms_des_par.m_UA_HT = 3750000;*/
 
 	if( ms_des_par.m_recomp_frac < 0.01 )
 	{
@@ -1957,6 +1964,8 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	m_m_dot_carryover = HTR_HP_dP_des_eq.m_m_dot_carryover;
 	Q_dot_LT = HTR_HP_dP_des_eq.m_Q_dot_LT;
 	Q_dot_HT = HTR_HP_dP_des_eq.m_Q_dot_HT;
+	//ms_des_solved.ms_LTR_des_solved = mc_LT_recup.ms_des_solved;
+	//ms_des_solved.ms_HTR_des_solved = *mpc_HTR->get_des_solved();
 
 	// State 5 can now be fully defined
 	m_enth_last[HTR_HP_OUT] = m_enth_last[MIXER_OUT] + Q_dot_HT / m_dot_t;						// Energy balance on cold stream of high-temp recuperator
@@ -2183,7 +2192,7 @@ int C_RecompCycle::C_HTR_HP_dP_des::operator()(double m_HTR_HP_dP_guess, double 
 	else	// m_HTR_tech_type == 2 == regenerator
 	{
 		//Dmitrii. Not sure about correct upper bound and the number of iterations
-		carryover_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol, 50, 0, 1, false);
+		carryover_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol*10, 50, 0, 1, false);
 
 		double tol_carryover_des_solved;
 		f_m_dot_HTR_HPin_carryover = tol_carryover_des_solved = std::numeric_limits<double>::quiet_NaN();
@@ -2211,20 +2220,26 @@ int C_RecompCycle::C_HTR_HP_dP_des::operator()(double m_HTR_HP_dP_guess, double 
 		double m_m_dot_t_normal = carryover_des_eq.m_m_dot_t;
 
 		//spdlog::get("logger")->warn("\t{->Carryover");
+
 		carryover_des_code = carryover_des_solver.solve(pair_lower, pair_upper, 0,
 			f_m_dot_HTR_HPin_carryover, tol_carryover_des_solved, iter_carryover_des);
 
 		if (carryover_des_code != C_monotonic_eq_solver::CONVERGED)
 		{
-			if (isfinite(tol_carryover_des_solved) && tol_carryover_des_solved / m_m_dot_t_normal > 0.001)
+			if (isfinite(tol_carryover_des_solved) == false) {
+				//spdlog::get("logger")->warn("\t<-}Carryover; code = " + std::to_string(carryover_des_code));
+				return -1;
+			}
+
+			if (tol_carryover_des_solved / m_m_dot_t_normal > 0.01)
 			{
 				//spdlog::get("logger")->warn("\t<-}Carryover; code = " + std::to_string(carryover_des_code));
 				return -1;
 			}
 		}
 
-		/*spdlog::get("logger")->warn("\t<-}Carryover; comass frac = " + std::to_string(f_m_dot_HTR_HPin_carryover) + 
-			", comass = " + std::to_string(carryover_des_eq.m_m_dot_carryover));*/
+		//spdlog::get("logger")->warn("\t<-}Carryover; comass frac = " + std::to_string(f_m_dot_HTR_HPin_carryover) + 
+		//	", comass = " + std::to_string(carryover_des_eq.m_m_dot_carryover));
 	}
 	
 	m_w_rc = carryover_des_eq.m_w_rc;
@@ -2258,7 +2273,6 @@ int C_RecompCycle::C_MEQ_carryover_des::operator()(double f_m_dot_HTR_HPin_carry
 	C_monotonic_eq_solver HTR_des_solver(HTR_des_eq);
 
 	HTR_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol*mpc_rc_cycle->m_temp_last[MC_IN], 1000, T_HTR_LP_out_lower, T_HTR_LP_out_upper, false);
-	//HTR_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol, 1000, T_HTR_LP_out_lower, T_HTR_LP_out_upper, false);
 
 	double T_HTR_LP_out_solved, tol_T_HTR_LP_out_solved;
 	T_HTR_LP_out_solved = tol_T_HTR_LP_out_solved = std::numeric_limits<double>::quiet_NaN();
@@ -2372,7 +2386,7 @@ int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, doub
 
 	try
 	{
-		mpc_rc_cycle->mc_LT_recup.design_fix_UA_calc_outlet(mpc_rc_cycle->ms_des_par.m_UA_LT, mpc_rc_cycle->ms_des_par.m_LT_eff_max,
+		mpc_rc_cycle->mc_LT_recup.design_fix_TARGET_calc_outlet(mpc_rc_cycle->ms_des_par.m_des_HX_target_type, mpc_rc_cycle->ms_des_par.m_UA_LT, mpc_rc_cycle->ms_des_par.m_LT_eff_max,
 			mpc_rc_cycle->m_temp_last[MC_OUT], mpc_rc_cycle->m_pres_last[MC_OUT], m_m_dot_mc, mpc_rc_cycle->m_pres_last[LTR_HP_OUT],
 			mpc_rc_cycle->m_temp_last[HTR_LP_OUT], mpc_rc_cycle->m_pres_last[HTR_LP_OUT], m_dot_HTR_in, mpc_rc_cycle->m_pres_last[LTR_LP_OUT],
 			m_Q_dot_LT, mpc_rc_cycle->m_temp_last[LTR_HP_OUT], T_LTR_LP_out_calc);
@@ -2422,8 +2436,6 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 
 	LTR_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol*mpc_rc_cycle->m_temp_last[MC_IN], 1000, T_LTR_LP_out_lower,
 																				T_LTR_LP_out_upper, false);
-	/*LTR_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol/2, 1000, T_LTR_LP_out_lower,
-								T_LTR_LP_out_upper, false);*/
 
 	double T_LTR_LP_out_solved, tol_T_LTR_LP_out_solved;
 	T_LTR_LP_out_solved = tol_T_LTR_LP_out_solved = std::numeric_limits<double>::quiet_NaN();
@@ -2449,8 +2461,8 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 	// Calculate mass flow rate through HTR with consideration that it could include carry-over
 	double m_dot_HTR_in = m_m_dot_rc + m_m_dot_mc;		//[kg/s]
 
-	/*spdlog::get("logger")->warn("\t\t\t<-}T_LTR_LP; T_LTR_LP_out = " + std::to_string(T_LTR_LP_out_solved) +
-		", m_dot_HTR_in = " + std::to_string(m_dot_HTR_in));*/
+	//spdlog::get("logger")->warn("\t\t\t<-}T_LTR_LP; T_LTR_LP_out = " + std::to_string(T_LTR_LP_out_solved) +
+	//	", m_dot_HTR_in = " + std::to_string(m_dot_HTR_in));
 
 	// Know LTR performance so we can calculate the HP outlet
 		// Energy balance on LTR HP stream
@@ -2492,7 +2504,7 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 
 	try
 	{
-	mpc_rc_cycle->mpc_HTR->design_fix_UA_calc_outlet(mpc_rc_cycle->ms_des_par.m_UA_HT, mpc_rc_cycle->ms_des_par.m_HT_eff_max,
+	mpc_rc_cycle->mpc_HTR->design_fix_TARGET_calc_outlet(mpc_rc_cycle->ms_des_par.m_des_HX_target_type, mpc_rc_cycle->ms_des_par.m_UA_HT, mpc_rc_cycle->ms_des_par.m_HT_eff_max,
 		mpc_rc_cycle->m_temp_last[MIXER_OUT], mpc_rc_cycle->m_pres_last[MIXER_OUT], m_dot_HTR_in, mpc_rc_cycle->m_pres_last[HTR_HP_OUT],
 		mpc_rc_cycle->m_temp_last[TURB_OUT], mpc_rc_cycle->m_pres_last[TURB_OUT], m_dot_HTR_in, mpc_rc_cycle->m_pres_last[HTR_LP_OUT],
 		m_Q_dot_HT, mpc_rc_cycle->m_temp_last[HTR_HP_OUT], T_HTR_LP_out_calc);
@@ -2653,11 +2665,15 @@ void C_RecompCycle::opt_design_core(int & error_code)
 		m_objective_metric_opt = 0.0;
 
 		// Set up instance of nlopt class and set optimization parameters
+		//nlopt::opt		opt_des_cycle(nlopt::LN_COBYLA, index);
 		nlopt::opt		opt_des_cycle(nlopt::LN_SBPLX, index);
 		opt_des_cycle.set_lower_bounds(lb);
 		opt_des_cycle.set_upper_bounds(ub);
 		opt_des_cycle.set_initial_step(scale);
 		opt_des_cycle.set_xtol_rel(ms_opt_des_par.m_opt_tol);
+
+		//opt_des_cycle.add_inequality_constraint(nlopt_HTR_eff_ineq, this);
+		//opt_des_cycle.add_inequality_constraint(nlopt_LTR_eff_ineq, this);
 
 		// Set max objective function
 		opt_des_cycle.set_max_objective(nlopt_cb_opt_des, this);		// Calls wrapper/callback that calls 'design_point_eta', which optimizes design point eta through repeated calls to 'design'
@@ -2768,7 +2784,7 @@ double C_RecompCycle::design_cycle_return_objective_metric(const std::vector<dou
 	
 	ms_des_par.m_UA_LT = ms_opt_des_par.m_UA_rec_total*LT_frac_local;
 	ms_des_par.m_UA_HT = ms_opt_des_par.m_UA_rec_total*(1.0 - LT_frac_local);
-
+	
 	int error_code = 0;
 
 	design_core(error_code);
@@ -2873,10 +2889,13 @@ void C_RecompCycle::auto_opt_design_core(int & error_code)
 		{
 			ms_opt_des_par.m_PR_mc_guess = PR_mc_guess;		//[-]
 		}
-
+		//0.3
 		ms_opt_des_par.m_recomp_frac_guess = 0.3;
 		ms_opt_des_par.m_fixed_recomp_frac = false;
 		ms_opt_des_par.m_LT_frac_guess = 0.5;
+		if (ms_des_par.m_des_HX_target_type == 1) {
+			ms_opt_des_par.m_LT_frac_guess = 1 - 600000 / ms_opt_des_par.m_UA_rec_total;
+		}
 		ms_opt_des_par.m_fixed_LT_frac = false;
 
 		int rc_error_code = 0;
@@ -3432,19 +3451,30 @@ void C_RecompCycle::finalize_design(int & error_code)
 
 	ms_des_solved.m_UA_LTR = ms_des_par.m_UA_LT;
 	ms_des_solved.m_UA_HTR = ms_des_par.m_UA_HT;
+	
 
-	spdlog::get("logger")->info(std::to_string(ms_des_par.m_UA_HT + ms_des_par.m_UA_LT) +
+	spdlog::get("logger")->info(std::to_string(ms_des_par.m_des_HX_target_type) +
+		", " + std::to_string(ms_des_par.m_UA_HT + ms_des_par.m_UA_LT) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_aUA_design_total + ms_des_solved.ms_LTR_des_solved.m_aUA_design_total) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_cost_design_total + ms_des_solved.ms_LTR_des_solved.m_cost_design_total) +
 		", " + std::to_string(m_pres_last[MC_IN]) +
 		", " + std::to_string(m_pres_last[MC_OUT]) +
 		", " + std::to_string(m_eta_thermal_calc_last) +
 		", " + std::to_string(ms_des_solved.m_recomp_frac) +
 		", " + std::to_string(m_m_dot_t) +
 		", " + std::to_string(ms_des_par.m_UA_HT) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_aUA_design_total) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_cost_design_total) +
 		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_eff_design) +
 		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_NTU_design) +
 		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_m_dot_carryover) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_Q_dot_design) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_eff_limited) +
 		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_eff_design) +
-		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_NTU_design));
+		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_NTU_design) +
+		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_Q_dot_design) +
+		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_eff_limited) + 
+		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_T_h_out));
 }
 
 //void C_RecompCycle::off_design(S_od_parameters & od_par_in, int & error_code)
@@ -6482,10 +6512,29 @@ double fmin_cb_opt_des_fixed_P_high(double P_high /*kPa*/, void *data)
 	return frame->opt_eta_fixed_P_high(P_high);
 }
 
+double nlopt_HTR_eff_ineq(const std::vector<double> &x, std::vector<double> &grad, void *data)
+{
+	C_RecompCycle *frame = static_cast<C_RecompCycle*>(data);
+	if (frame != NULL) {
+		return (frame->get_design_solved()->ms_HTR_des_solved.m_eff_design - 0.8);
+	}
+	else
+		return 0.0;
+}
+double nlopt_LTR_eff_ineq(const std::vector<double> &x, std::vector<double> &grad, void *data)
+{
+	C_RecompCycle *frame = static_cast<C_RecompCycle*>(data);
+	if (frame != NULL) {
+		return (frame->get_design_solved()->ms_LTR_des_solved.m_eff_design - 0.9);
+	}
+	else
+		return 0.0;
+}
+
 double nlopt_cb_opt_des(const std::vector<double> &x, std::vector<double> &grad, void *data)
 {
 	C_RecompCycle *frame = static_cast<C_RecompCycle*>(data);
-	if( frame != NULL ) 
+	if (frame != NULL)
 		return frame->design_cycle_return_objective_metric(x);
 	else 
 		return 0.0;

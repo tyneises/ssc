@@ -48,6 +48,8 @@ int RegenHX::solveSystem()
 		costHX *= 2;
 	}
 
+	costHX += costValves;
+
 	return status;
 }
 
@@ -102,11 +104,18 @@ double RegenHX::od_delta_p_hot(double m_dot_h /*kg/s*/)
 	return ms_des_solved.m_DP_hot_des*pow(m_dot_h / m_dot_H, 1.75);
 }
 
-void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+void RegenHX::design_fix_UA_calc_outlet(double UA_target, double eff_target, double T_c_in, double P_c_in, double m_dot_c, double P_c_out, double T_h_in, double P_h_in, double m_dot_h, double P_h_out, double & q_dot, double & T_c_out, double & T_h_out)
+{
+	design_fix_TARGET_calc_outlet(0, UA_target, eff_target, T_c_in, P_c_in, m_dot_c, P_c_out,
+		T_h_in, P_h_in, m_dot_h, P_h_out, q_dot, T_c_out, T_h_out);
+}
+
+void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetValue /*kW/K or $*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
 	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
 {
-	if (UA_target < 1.E-10) {
+	resetDesignStructure();
+	if (targetValue < 1.E-10) {
 		q_dot = 0;
 		T_c_out = T_c_in;
 		T_h_out = T_h_in;
@@ -118,16 +127,16 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 		return;
 	}
 
-
 	double Q_dot_loss = 100;
 	double P_0 = 45;
 	double D_s = 0.003;
 	double e_v = 0.37;
+	//double D_s = 0.001;
+	//double e_v = 0.32;
 	double dP_max_total = max(P_h_in - P_h_out, P_c_in - P_c_out);
 
 	setParameters(operationModes::PARALLEL, Q_dot_loss, P_0, D_s, e_v);
 	setInletStates(T_h_in, P_h_in, m_dot_h, T_c_in, P_c_in, m_dot_c);
-	setDesignTargets(targetModes::UA, UA_target, dP_max_total);
 
 	//High Pressure Low Temperature. T_c_in
 	valves[0].cost = 36000;
@@ -142,14 +151,49 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	valves[3].cost = 36000;
 	valves[3].cv = 950;
 
+	costValves = 474000;
+	/*for (int i = 0; i < 4; i++) {
+		costValves += valves[i].cost;
+	}*/
+
 	setValves(valves);
-	
+
+	if (targetType == 0) {
+		setDesignTargets(targetModes::UA, targetValue, dP_max_total);
+	}
+	else if (targetType == 1) {
+		setDesignTargets(targetModes::COST, targetValue - costValves, dP_max_total);
+	}
+	else if (targetType == 2) {
+		setDesignTargets(targetModes::EPSILON, eff_target, dP_max_total);
+	}
+
 	int status = solveSystem();
 
 	if (status < 0) {
 		resetDesignStructure();
 		throw(C_csp_exception("RegenHX::design",
 			"Regenerator model failed!"));
+	}
+
+	if (epsilon > eff_target && targetType != 2) {
+		ms_des_solved.m_eff_limited = true;
+		double oldUA = UA;
+		double oldCostHX = costHX;
+		setParameters(operationModes::PARALLEL, Q_dot_loss, P_0, D_s, e_v);
+		setInletStates(T_h_in, P_h_in, m_dot_h, T_c_in, P_c_in, m_dot_c);
+		setDesignTargets(targetModes::EPSILON, eff_target, dP_max_total);
+
+		status = solveSystem();
+
+		if (status < 0) {
+			resetDesignStructure();
+			throw(C_csp_exception("RegenHX::design",
+				"Regenerator model failed!"));
+		}
+
+		UA = oldUA;
+		costHX = oldCostHX;
 	}
 
 	q_dot = Q_dot_a;
@@ -164,7 +208,17 @@ void RegenHX::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_ta
 	ms_des_solved.m_Q_dot_design = Q_dot_a;
 	ms_des_solved.m_T_c_out = T_C_out;
 	ms_des_solved.m_T_h_out = T_H_out;
-	ms_des_solved.m_UA_design_total = UA;
+
+	if (targetType == 0 || targetType == 2) {
+		ms_des_solved.m_UA_design_total = UA;
+	}
+	else if (targetType == 1) {
+		ms_des_solved.m_UA_design_total = costHX;
+	}
+	
+
+	ms_des_solved.m_aUA_design_total = UA;
+	ms_des_solved.m_cost_design_total = costHX;
 	ms_des_solved.m_m_dot_carryover = m_dot_carryover;
 }
 
@@ -198,7 +252,9 @@ void RegenHX::resetDesignStructure()
 {
 	ms_des_solved.m_DP_cold_des = ms_des_solved.m_DP_hot_des = ms_des_solved.m_eff_design = ms_des_solved.m_min_DT_design = ms_des_solved.m_NTU_design =
 		ms_des_solved.m_Q_dot_design = ms_des_solved.m_T_c_out = ms_des_solved.m_T_h_out = ms_des_solved.m_UA_design_total = 
+		ms_des_solved.m_aUA_design_total = ms_des_solved.m_cost_design_total =
 		ms_des_solved.m_m_dot_carryover = std::numeric_limits<double>::quiet_NaN();
+	ms_des_solved.m_eff_limited = false;
 }
 
 void RegenHX::setInletStates(double T_H_in, double P_H, double m_dot_H, double T_C_in, double P_C, double m_dot_C)

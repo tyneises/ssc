@@ -732,7 +732,7 @@ private:
 	void loadTables();
 
 	//! Calculates cost of the regenerato module.
-	void calculateCost();
+	int calculateCost();
 
 	/*! \brief Monotonic equation solver that balances total heat transfer by adjusting T_H_out.
 		\sa HeatTransfer_ME

@@ -1,15 +1,15 @@
 var("inletStates.T_H_in", 843);
-var("inletStates.P_H", 8746.841776);
+var("inletStates.P_H", 7522);
 var("inletStates.T_C_in", 459);
-var("inletStates.P_C", 22708.203932);
+var("inletStates.P_C", 25000);
 
-var("parameters.m_dot_H", 101.149692);
-var("parameters.m_dot_C", 101.149692);
+var("parameters.m_dot_H", 77);
+var("parameters.m_dot_C", 77);
 var("parameters.Q_dot_loss", 100);
 var("parameters.P_0", 45);
 var("parameters.D_s", 0.003);
 var("parameters.e_v", 0.37);
 
-var("targets.targetdP_max", 500);
+var("targets.targetdP_max", 216);
 var("targets.targetCost", 162000);
 run("regenhx");

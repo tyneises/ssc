@@ -209,6 +209,15 @@ void C_sco2_re_hx_pche::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, dou
 	return;
 }
 
+void C_sco2_re_hx_pche::design_fix_TARGET_calc_outlet(int targetType, double targetValue, double eff_target, double T_c_in, double P_c_in, double m_dot_c, double P_c_out, double T_h_in, double P_h_in, double m_dot_h, double P_h_out, double & q_dot, double & T_c_out, double & T_h_out)
+{
+	mc_hx.design_fix_TARGET_calc_outlet(targetType, targetValue, eff_target, T_c_in, P_c_in, m_dot_c, P_c_out,
+		T_h_in, P_h_in, m_dot_h, P_h_out,
+		q_dot, T_c_out, T_h_out);
+
+	return;
+}
+
 const C_HX_counterflow::S_des_solved * C_sco2_re_hx_pche::get_des_solved()
 {
 	return &mc_hx.ms_des_solved;
@@ -252,6 +261,15 @@ void C_sco2_re_hx_regen::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, do
 	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
 {
 	mc_hx.design_fix_UA_calc_outlet(UA_target, eff_target, T_c_in, P_c_in, m_dot_c, P_c_out,
+		T_h_in, P_h_in, m_dot_h, P_h_out,
+		q_dot, T_c_out, T_h_out);
+
+	return;
+}
+
+void C_sco2_re_hx_regen::design_fix_TARGET_calc_outlet(int targetType, double targetValue, double eff_target, double T_c_in, double P_c_in, double m_dot_c, double P_c_out, double T_h_in, double P_h_in, double m_dot_h, double P_h_out, double & q_dot, double & T_c_out, double & T_h_out)
+{
+	mc_hx.design_fix_TARGET_calc_outlet(targetType, targetValue, eff_target, T_c_in, P_c_in, m_dot_c, P_c_out,
 		T_h_in, P_h_in, m_dot_h, P_h_out,
 		q_dot, T_c_out, T_h_out);
 

@@ -134,7 +134,7 @@ public:
 		ofstream uaFile;
 		string SSCDIR1(std::getenv("SSCDIR"));
 		uaFile.open(SSCDIR1 + "/build_sdk/examples/Regen-UA.log");
-		uaFile << "Epsilon,\tUA,\t\tNTU,\tD_fr,\tL,\t\tT_H_out,\tComass,\t\tms" << endl;
+		uaFile << "Epsilon,\tUA,\t\tNTU,\tD_fr,\tL,\t\tT_H_out,\tComass,\t\tCost,\t\tP_0,\tms" << endl;
 
 
 		RegenHX* HT_regen = new RegenHX();
@@ -143,15 +143,22 @@ public:
 		char* output = new char[150];
 		clock_t begin, end;
 
+		Q_dot_loss = 100;
+		P_0 = 45;
+		D_s = 0.001;
+		//double ua = 4000;
+		e_v = 0.32;
+
 		double q_dot, T_c_out, T_h_out, comass;
-		for (int ua = 500; ua <= 50000; ua += 500) {
+		for (double ua = 500; ua <= 20000; ua += 500) {
 			comass = q_dot = T_c_out = T_h_out = std::numeric_limits<double>::quiet_NaN();
 
 			begin = clock();
 			try {
-				HT_regen->design_fix_UA_calc_outlet(ua, 1, T_C_in, P_C, m_dot_C, P_C, T_H_in, P_H, m_dot_H, P_H - targetdP_max, q_dot, T_c_out, T_h_out);
+				HT_regen->setParameters(operationModes::PARALLEL, Q_dot_loss, P_0, D_s, e_v);
+				HT_regen->design_fix_TARGET_calc_outlet(0, ua, 0.98, T_C_in, P_C, m_dot_C, P_C, T_H_in, P_H, m_dot_H, P_H - targetdP_max, q_dot, T_c_out, T_h_out);
 				end = clock();
-				sprintf(output, "%.5f,\t%.0f,\t%.2f,\t%.2f,\t%.2f,\t%.2f,\t\t%.2f,\t\t%.0f",
+				sprintf(output, "%.5f,\t%.0f,\t%.2f,\t%.2f,\t%.2f,\t%.2f,\t\t%.2f,\t\t%.0f,\t\t%d,\t\t\t\t%.0f",
 					HT_regen->ms_des_solved.m_eff_design,
 					HT_regen->ms_des_solved.m_UA_design_total,
 					HT_regen->ms_des_solved.m_NTU_design,
@@ -159,13 +166,15 @@ public:
 					HT_regen->getL(),
 					T_h_out,
 					HT_regen->ms_des_solved.m_m_dot_carryover,
+					HT_regen->getCost(),
+					HT_regen->ms_des_solved.m_eff_limited,
 					double(end - begin) / CLOCKS_PER_SEC * 1000.0);
 				uaFile << output << endl;
 				uaFile.flush();
 			}
 			catch(C_csp_exception &){
 				end = clock();
-				uaFile << "-,\t\t\t" << ua << ",\t-,\t\t-,\t\t-,\t\t-,\t\t\t-,\t\t\t" << double(end - begin) / CLOCKS_PER_SEC * 1000.0 << endl;
+				uaFile << "-,\t\t\t" << ua << ",\t-,\t\t-,\t\t-,\t\t-,\t\t\t-,\t\t\t-,\t\t\t-,\t\t\t\t" << double(end - begin) / CLOCKS_PER_SEC * 1000.0 << endl;
 				continue;
 			}
 		}

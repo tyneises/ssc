@@ -265,12 +265,16 @@ void RegeneratorModel::loadTables() {
 	fatigueTable = new LookupTable_1D(FATIGUE_TABLE_PATH);
 }
 
-void RegeneratorModel::calculateCost()
+int RegeneratorModel::calculateCost()
 {
 	D_shell = D_fr + insulationThickness * 2;
 	R_i = D_shell / 2.0;
 	
-	WallThickness->solve();
+	double tolerance;
+	int statusSolver = WallThickness->solve(&tolerance);
+	if (statusSolver != C_monotonic_eq_solver::CONVERGED) {
+		return -1;
+	}
 
 	volumeShell = 2 * (PI * (pow(R_o, 2) - pow(R_i, 2)) * L + 4 / 3.0 * PI * (pow(R_o, 3) - pow(R_i, 3))); // a cylinder plus two half spheres
 	volumeInsulation = 2* (PI * (pow(R_i, 2) - pow(R_i - insulationThickness, 2)) * L + 4 / 3.0 * PI * pow(R_i, 3)*insulationParameter);
@@ -290,6 +294,7 @@ void RegeneratorModel::calculateCost()
 
 	costMaterial = costShellMaterial + costInsulationMaterial + costBedMaterial;
 	costModule = costMaterial + 2 * (priceCasting + priceCastingSteel + priceWelding);
+	return 0;
 }
 
 void RegeneratorModel::setInletStates(double T_H_in, double P_H, double m_dot_H, double T_C_in, double P_C, double m_dot_C)
@@ -615,12 +620,12 @@ int RegeneratorModel::WallThickness_ME(double th, double * stressAmplitude)
 
 	double magicPieceRo = RoSquared * RSquareDifference;
 
-	double magicPieceHigh = RSquareProduct * (Patm - P_C);
+	double magicPieceHigh = RSquareProduct * (Patm - P_C / 1000.0);
 
-	double magicPieceLow = RSquareProduct * (Patm - P_H_out);
+	double magicPieceLow = RSquareProduct * (Patm - P_H_out / 1000.0);
 
 	//sigma_a_h = (P_high*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2);		
-	double sigma_a_h = (P_C * RiSquared - Patm * RoSquared) / RSquareDifference; //axial stress calculation
+	double sigma_a_h = (P_C / 1000.0 * RiSquared - Patm * RoSquared) / RSquareDifference; //axial stress calculation
 
 	//sigma_c_1_h = (P_high*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2) - r_i ^ 2 * r_o ^ 2 * (P_o - P_high) / (r_i ^ 2 * (r_o ^ 2 - r_i ^ 2));	//hoop stress at inner surface
 	double sigma_c_1_h = sigma_a_h - magicPieceHigh / magicPieceRi;	//hoop stress at inner surface
@@ -640,7 +645,7 @@ int RegeneratorModel::WallThickness_ME(double th, double * stressAmplitude)
 
 
 	// sigma_a_l = (P_low*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2);	//axial stress calculation
-	double sigma_a_l = (P_H_out*RiSquared - Patm * RoSquared) / RSquareDifference;	//axial stress calculation
+	double sigma_a_l = (P_H_out / 1000.0 * RiSquared - Patm * RoSquared) / RSquareDifference;	//axial stress calculation
 
 	//sigma_c_1_l = (P_low*r_i ^ 2 - P_o*r_o ^ 2) / (r_o ^ 2 - r_i ^ 2) - r_i ^ 2 * r_o ^ 2 * (P_o - P_low) / (r_i ^ 2 * (r_o ^ 2 - r_i ^ 2));	//hoop stress at inner surface
 	double sigma_c_1_l = sigma_a_l - magicPieceLow / magicPieceRi;	//hoop stress at inner surface
@@ -729,7 +734,7 @@ int RegeneratorModel::solveSystem()
 	CarryoverMassFlow_SP.solverName = "Carryover Mass Solver";
 	CarryoverMassFlow_SP.target = 0;
 	CarryoverMassFlow_SP.lowerBound = 0;		CarryoverMassFlow_SP.upperBound = min(m_dot_C, m_dot_H);
-	CarryoverMassFlow_SP.tolerance = 0.001;
+	CarryoverMassFlow_SP.tolerance = 0.01;
 	CarryoverMassFlow_SP.iterationLimit = 50;
 	CarryoverMassFlow_SP.isErrorRel = false;
 	CarryoverMassFlow_SP.classInst = this;
@@ -763,27 +768,71 @@ int RegeneratorModel::solveSystem()
 	CarryoverMassFlow_SP.guessValue1 = m_dot_carryover;
 	CarryoverMassFlow_SP.guessValue2 = m_dot_carryover + 1;
 	CarryoverMassFlow->setParameters(&CarryoverMassFlow_SP);
-	HeatTransfer->updateGuesses(T_H_out - 1, T_H_out);
-	HotPressureDrop->updateGuesses(dP_H - 10, dP_H);
-	ColdPressureDrop->updateGuesses(dP_C - 10, dP_C);
-	Diameter->updateGuesses(D_fr - 0.001, D_fr);
-	Length->updateGuesses(L - 0.001, L);
-	PressureSplit->updateGuesses(dP_max - 10, dP_max);
 
-	statusSolver = CarryoverMassFlow->solve();
-
-	if (statusSolver == C_monotonic_eq_solver::CONVERGED) {
-
-		carryoverEnthDrop();
-		calculateCost();
-
-		m_dot_H -= m_dot_carryover;
-		m_dot_C -= m_dot_carryover;
-
-		return 0;
+	if (T_H_out - 1 < HeatTransfer_SP.lowerBound) {
+		HeatTransfer->updateGuesses(T_H_out, T_H_out + 1);
+	}
+	else {
+		HeatTransfer->updateGuesses(T_H_out - 1, T_H_out);
 	}
 
-	return -1;
+	if (dP_H - 10 < HotPressureDrop_SP.lowerBound) {
+		HotPressureDrop->updateGuesses(dP_H, dP_H + 10);
+	}
+	else {
+		HotPressureDrop->updateGuesses(dP_H - 10, dP_H);
+	}
+
+	if (dP_C - 10 < ColdPressureDrop_SP.lowerBound) {
+		ColdPressureDrop->updateGuesses(dP_C, dP_C+10);
+	}
+	else {
+		ColdPressureDrop->updateGuesses(dP_C - 10, dP_C);
+	}
+
+	if (D_fr - 0.001 < Diameter_SP.lowerBound) {
+		Diameter->updateGuesses(D_fr, D_fr + 0.001);
+	}
+	else {
+		Diameter->updateGuesses(D_fr - 0.001, D_fr);
+	}
+	
+	if (L - 0.001 < Length_SP.lowerBound) {
+		Length->updateGuesses(L, L + 0.001);
+	}
+	else {
+		Length->updateGuesses(L - 0.001, L);
+	}
+
+	if (dP_max - 10 < PressureSplit_SP.lowerBound) {
+		PressureSplit->updateGuesses(dP_max, dP_max + 10);
+	}
+	else {
+		PressureSplit->updateGuesses(dP_max - 10, dP_max);
+	}
+
+	double tolerance;
+	statusSolver = CarryoverMassFlow->solve(&tolerance);
+	if (statusSolver != C_monotonic_eq_solver::CONVERGED) {
+		if (isfinite(tolerance) == false) {
+			return -1;
+		}
+
+		if (tolerance / min(m_dot_C, m_dot_H) > 0.01)
+		{
+			return -1;
+		}
+	}
+
+	carryoverEnthDrop();
+	if (calculateCost() != 0) {
+		return -1;
+	}
+
+	m_dot_H -= m_dot_carryover;
+	m_dot_C -= m_dot_carryover;
+
+	return 0;
 }
 
 void RegeneratorModel::getSolution(RegeneratorSolution * solution)
