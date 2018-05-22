@@ -113,7 +113,7 @@ public:
 		double m_tol;						//[-] Convergence tolerance
 		double m_N_turbine;					//[rpm] Turbine shaft speed (negative values link turbine to compressor)
 
-		int m_des_HX_target_type;		//0: UA, 1: Cost
+		int m_des_HX_allocation_type;		//[0] = hit total UA (kW/K), [1] hit total Cost ($)
 		int m_des_objective_type;		//[2] = min phx deltat then max eta, [else] max eta
 		double m_min_phx_deltaT;		//[C]
 
@@ -126,8 +126,8 @@ public:
 			m_N_sub_hxrs = -1;
 
 			// Default to PCHE for HTR
-			m_HTR_tech_type = 2;
-			m_des_HX_target_type = 1;
+			m_des_HX_allocation_type = 0;	//UA
+			m_HTR_tech_type = 1;			// PCHE
 
 			// Default to standard optimization to maximize cycle efficiency
 			m_des_objective_type = 1;
@@ -165,6 +165,8 @@ public:
 		double m_opt_tol;					//[-] Optimization tolerance
 		double m_N_turbine;					//[rpm] Turbine shaft speed (negative values link turbine to compressor)
 		
+		int m_HTR_tech_type;				//[-] 1: Counterflow PCHE, 2: Regenerator
+		int m_des_HX_allocation_type;		//0: UA, 1: Cost
 		int m_des_objective_type;			//[2] = min phx deltat then max eta, [else] max eta
 		double m_min_phx_deltaT;			//[C]
 
@@ -191,6 +193,8 @@ public:
 			m_N_sub_hxrs = -1;
 
 			// Default to standard optimization to maximize cycle efficiency
+			m_des_HX_allocation_type = 0;	//UA
+			m_HTR_tech_type = 1;			// PCHE
 			m_des_objective_type = 1;
 			m_min_phx_deltaT = 0.0;		//[C]
 

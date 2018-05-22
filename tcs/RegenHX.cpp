@@ -33,6 +33,7 @@ int RegenHX::solveSystem()
 	UA = solution.UA;
 	L = solution.L;
 	D_fr = solution.D_fr;
+	AspectRatio = L / D_fr;
 	wallThickness = solution.wallThickness;
 	m_dot_carryover = solution.m_dot_carryover;
 	m_HTR_LP_dP = solution.m_HTR_LP_dP;
@@ -104,13 +105,13 @@ double RegenHX::od_delta_p_hot(double m_dot_h /*kg/s*/)
 	return ms_des_solved.m_DP_hot_des*pow(m_dot_h / m_dot_H, 1.75);
 }
 
-void RegenHX::design_fix_UA_calc_outlet(double UA_target, double eff_target, double T_c_in, double P_c_in, double m_dot_c, double P_c_out, double T_h_in, double P_h_in, double m_dot_h, double P_h_out, double & q_dot, double & T_c_out, double & T_h_out)
+void RegenHX::design_fix_UA_calc_outlet(double UA_target, double eff_limit, double T_c_in, double P_c_in, double m_dot_c, double P_c_out, double T_h_in, double P_h_in, double m_dot_h, double P_h_out, double & q_dot, double & T_c_out, double & T_h_out)
 {
-	design_fix_TARGET_calc_outlet(0, UA_target, eff_target, T_c_in, P_c_in, m_dot_c, P_c_out,
+	design_fix_TARGET_calc_outlet(0, UA_target, eff_limit, T_c_in, P_c_in, m_dot_c, P_c_out,
 		T_h_in, P_h_in, m_dot_h, P_h_out, q_dot, T_c_out, T_h_out);
 }
 
-void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetValue /*kW/K or $*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetValue /*kW/K or $*/, double eff_limit /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
 	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
 {
@@ -165,7 +166,7 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 		setDesignTargets(targetModes::COST, targetValue - costValves, dP_max_total);
 	}
 	else if (targetType == 2) {
-		setDesignTargets(targetModes::EPSILON, eff_target, dP_max_total);
+		setDesignTargets(targetModes::EPSILON, eff_limit, dP_max_total);
 	}
 
 	int status = solveSystem();
@@ -176,13 +177,13 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 			"Regenerator model failed!"));
 	}
 
-	if (epsilon > eff_target && targetType != 2) {
+	if (epsilon > eff_limit && targetType != 2) {
 		ms_des_solved.m_eff_limited = true;
 		double oldUA = UA;
 		double oldCostHX = costHX;
 		setParameters(operationModes::PARALLEL, Q_dot_loss, P_0, D_s, e_v);
 		setInletStates(T_h_in, P_h_in, m_dot_h, T_c_in, P_c_in, m_dot_c);
-		setDesignTargets(targetModes::EPSILON, eff_target, dP_max_total);
+		setDesignTargets(targetModes::EPSILON, eff_limit, dP_max_total);
 
 		status = solveSystem();
 

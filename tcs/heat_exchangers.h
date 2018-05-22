@@ -314,7 +314,7 @@ public:
 		double h_c_in /*kJ/kg*/, double h_h_in /*kJ/kg*/, double P_c_in /*kPa*/, double P_c_out /*kPa*/, double P_h_in /*kPa*/, double P_h_out /*kPa*/,
 		double & UA /*kW/K*/, double & min_DT /*C*/, double & eff /*-*/, double & NTU /*-*/, double & h_h_out /*K*/, double & h_c_out /*K*/, double & q_dot_calc /*kWt*/);
 
-	void design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/,
+	void design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_limit /*-*/,
 		double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
 		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);
@@ -323,7 +323,7 @@ public:
 
 	double calc_cost_from_UA(double UA /*kW/K*/);
 
-	void design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetValue /*?*/, double eff_target /*-*/,
+	void design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetValue /*?*/, double eff_limit /*-*/,
 		double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
 		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);

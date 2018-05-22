@@ -74,6 +74,8 @@ static var_info _cm_vtab_sco2_csp_system[] = {
 	{ SSC_INPUT,  SSC_NUMBER,  "is_recomp_ok",         "1 = Yes, 0 = simple cycle only",                         "",           "",    "",      "?=1",   "",       "" },
 	{ SSC_INPUT,  SSC_NUMBER,  "is_PR_fixed",          "0 = No, >0 = fixed pressure ratio",                      "",           "",    "",      "?=0",   "",       "" },
 	{ SSC_INPUT,  SSC_NUMBER,  "des_objective",        "[2] = hit min phx deltat then max eta, [else] max eta",  "",           "",    "",      "?=0",   "",       "" },
+	{ SSC_INPUT,  SSC_NUMBER,  "des_HX_allocation",    "[0] = hit total UA (kW/K), [1] hit total Cost ($)",		 "",           "",    "",      "?=0",   "",       "" },
+	{ SSC_INPUT,  SSC_NUMBER,  "HTR_tech_type",        "[1] = Counterflow PCHE, [2] Regenerator",				 "",           "",    "",      "?=1",   "",       "" },
 	{ SSC_INPUT,  SSC_NUMBER,  "min_phx_deltaT",       "Minimum design temperature difference across PHX",       "C",          "",    "",      "?=0",   "",       "" },	
 	// Cycle Design
 	{ SSC_INPUT,  SSC_NUMBER,  "eta_isen_mc",          "Design main compressor isentropic efficiency",           "-",          "",    "",      "*",     "",       "" },
@@ -356,6 +358,8 @@ public:
 		sco2_rc_des_par.m_opt_tol = 1.E-3;
 		
 			// Remaining cycle design parameters
+		sco2_rc_des_par.m_des_HX_allocation_type = as_double("des_HX_allocation");
+		sco2_rc_des_par.m_HTR_tech_type = as_double("HTR_tech_type");
 		sco2_rc_des_par.m_LT_eff_max = as_double("LT_recup_eff_max");
 		sco2_rc_des_par.m_HT_eff_max = as_double("HT_recup_eff_max");
 		sco2_rc_des_par.m_eta_mc = as_double("eta_isen_mc");

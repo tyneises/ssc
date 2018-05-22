@@ -1074,7 +1074,7 @@ void C_HX_co2_to_htf::design_and_calc_m_dot_htf(C_HX_counterflow::S_des_calc_UA_
 	design_calc_UA(des_par, q_dot_design, des_solved);
 }
 
-void C_HX_counterflow::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+void C_HX_counterflow::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_limit /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
 	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
 {
@@ -1092,7 +1092,7 @@ void C_HX_counterflow::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, doub
 		ms_init_par.m_N_sub_hx,
 		T_c_in, P_c_in, m_dot_c, P_c_out, 
 		T_h_in, P_h_in, m_dot_h, P_h_out, 
-		UA_target, eff_target, ms_des_solved.m_eff_design,
+		UA_target, eff_limit, ms_des_solved.m_eff_design,
 		q_dot, T_c_out, T_h_out,
 		eff_calc, min_DT, NTU, UA_calc);
 
@@ -1104,7 +1104,7 @@ void C_HX_counterflow::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, doub
 	ms_des_calc_UA_par.m_P_c_in = P_c_in;			//[kPa]
 	ms_des_calc_UA_par.m_P_c_out = P_c_out;			//[kPa]
 	ms_des_calc_UA_par.m_m_dot_cold_des = m_dot_c;	//[kg/s]
-	ms_des_calc_UA_par.m_eff_max = eff_target;		//[-]
+	ms_des_calc_UA_par.m_eff_max = eff_limit;		//[-]
 
 	ms_des_solved.m_Q_dot_design = q_dot;			//[kWt]
 	ms_des_solved.m_UA_design_total = UA_calc;		//[kW/K]
@@ -1202,7 +1202,7 @@ double C_HX_counterflow::calc_cost_from_UA(double UA /*kW/K*/)
 	return cost;*/
 }
 
-void C_HX_counterflow::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetValue /*kW/K or $*/, double eff_target /*-*/,
+void C_HX_counterflow::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetValue /*kW/K or $*/, double eff_limit /*-*/,
 	double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
 	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
@@ -1216,7 +1216,7 @@ void C_HX_counterflow::design_fix_TARGET_calc_outlet(int targetType /*-*/, doubl
 		UA_target = calc_UA_from_cost(targetValue);
 	}
 
-	design_fix_UA_calc_outlet(UA_target, eff_target, T_c_in, P_c_in, m_dot_c, P_c_out,
+	design_fix_UA_calc_outlet(UA_target, eff_limit, T_c_in, P_c_in, m_dot_c, P_c_out,
 		T_h_in, P_h_in, m_dot_h, P_h_out, q_dot, T_c_out , T_h_out);
 
 	ms_des_solved.m_UA_design_total = UA_target;

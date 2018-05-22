@@ -35,6 +35,7 @@ private:
 	double m_dot_C;
 	double L;
 	double D_fr;
+	double AspectRatio;
 	double wallThickness;
 	double m_dot_carryover;
 	double m_HTR_LP_dP, m_HTR_HP_dP;
@@ -123,6 +124,7 @@ public:
 
 	double getD_fr() { return D_fr; }
 	double getL() { return L; }
+	double getAspectRatio() { return AspectRatio; }
 	double getCost() { return costHX; }
 
 	//! Constructor that calls RegenHX::loadTables()
@@ -133,11 +135,11 @@ public:
 	double od_delta_p_cold(double m_dot_c /*kg/s*/);
 	double od_delta_p_hot(double m_dot_h /*kg/s*/);
 
-	void design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+	void design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_limit /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
 		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);
 
-	void design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetValue /*kW/K or $*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
+	void design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetValue /*kW/K or $*/, double eff_limit /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
 		double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 		double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/);
 

@@ -19,6 +19,9 @@ var('is_recomp_ok', 1);			//[-] 1 = yes, 2 = simple cycle only
 
 
 var('design_method', 2);		//[-] 1 = Specify efficiency, 2 = Specify total recup UA
+var('des_HX_allocation', 1);    //[-] [0] = hit total UA (kW/K), [1] hit total Cost ($)
+var('HTR_tech_type', 2);		//[1] = Counterflow PCHE, [2] Regenerator
+
 if(var('design_method') == 1)
 {
 	var('eta_thermal_des', 0.50);	//[-] Power cycle thermal efficiency
@@ -32,9 +35,10 @@ else if(var('design_method') == 2)
 var('eta_isen_mc', 0.88);		//[-] Main compressor isentropic efficiency
 var('eta_isen_rc', 0.88);		//[-] Re-compressor isentropic efficiency
 var('eta_isen_t', 0.92);		//[-] Turbine isentropic efficiency
-eta_max = 0.98;
-var('LT_recup_eff_max', eta_max);	//[-] Maximum possible effectiveness in LT recuperator
-var('HT_recup_eff_max', 0.999);	//[-] Maximum possible effectiveness in HT recuperator
+eta_LTR_max = 0.98;
+eta_HTR_max = 0.999;
+var('LT_recup_eff_max', eta_LTR_max);	//[-] Maximum possible effectiveness in LT recuperator
+var('HT_recup_eff_max', eta_HTR_max);	//[-] Maximum possible effectiveness in HT recuperator
 var('P_high_limit',25);			//[MPa] Cycle high pressure limit
 	// PHX design
 var('dT_PHX_cold_approach', 20);	//[C] Temperature difference between cold HTF and cold CO2 PHX inlet

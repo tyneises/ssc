@@ -160,7 +160,9 @@ void C_sco2_recomp_csp::design_core()
 			pc_des_params.m_opt_tol = ms_des_par.m_opt_tol;
 			pc_des_params.m_N_turbine = ms_des_par.m_N_turbine;
 
-			pc_des_params.m_des_objective_type = ms_des_par.m_des_objective_type;		//[-]
+			pc_des_params.m_des_objective_type = ms_des_par.m_des_objective_type;				//[-]
+			pc_des_params.m_des_HX_allocation_type = ms_des_par.m_des_HX_allocation_type;		//[-]
+			pc_des_params.m_HTR_tech_type = ms_des_par.m_HTR_tech_type;							//[-]
 			pc_des_params.m_min_phx_deltaT = ms_des_par.m_min_phx_deltaT;				//[C]
 
 			pc_des_params.m_PR_mc_guess = ms_des_par.m_PR_mc_guess;		//[-]
@@ -261,7 +263,9 @@ void C_sco2_recomp_csp::design_core()
 			s_rc_auto_opt_des_par.m_opt_tol = ms_des_par.m_opt_tol;
 			s_rc_auto_opt_des_par.m_N_turbine = ms_des_par.m_N_turbine;
 
-			s_rc_auto_opt_des_par.m_des_objective_type = ms_des_par.m_des_objective_type;		//[-]
+			s_rc_auto_opt_des_par.m_des_objective_type = ms_des_par.m_des_objective_type;				//[-]
+			s_rc_auto_opt_des_par.m_des_HX_allocation_type = ms_des_par.m_des_HX_allocation_type;		//[-]
+			s_rc_auto_opt_des_par.m_HTR_tech_type = ms_des_par.m_HTR_tech_type;							//[-]
 			s_rc_auto_opt_des_par.m_min_phx_deltaT = ms_des_par.m_min_phx_deltaT;				//[C]
 
 			s_rc_auto_opt_des_par.m_PR_mc_guess = ms_des_par.m_PR_mc_guess;		//[-]

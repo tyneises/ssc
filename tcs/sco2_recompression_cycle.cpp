@@ -2386,7 +2386,7 @@ int C_RecompCycle::C_mono_eq_LTR_des::operator()(double T_LTR_LP_out /*K*/, doub
 
 	try
 	{
-		mpc_rc_cycle->mc_LT_recup.design_fix_TARGET_calc_outlet(mpc_rc_cycle->ms_des_par.m_des_HX_target_type, mpc_rc_cycle->ms_des_par.m_UA_LT, mpc_rc_cycle->ms_des_par.m_LT_eff_max,
+		mpc_rc_cycle->mc_LT_recup.design_fix_TARGET_calc_outlet(mpc_rc_cycle->ms_des_par.m_des_HX_allocation_type, mpc_rc_cycle->ms_des_par.m_UA_LT, mpc_rc_cycle->ms_des_par.m_LT_eff_max,
 			mpc_rc_cycle->m_temp_last[MC_OUT], mpc_rc_cycle->m_pres_last[MC_OUT], m_m_dot_mc, mpc_rc_cycle->m_pres_last[LTR_HP_OUT],
 			mpc_rc_cycle->m_temp_last[HTR_LP_OUT], mpc_rc_cycle->m_pres_last[HTR_LP_OUT], m_dot_HTR_in, mpc_rc_cycle->m_pres_last[LTR_LP_OUT],
 			m_Q_dot_LT, mpc_rc_cycle->m_temp_last[LTR_HP_OUT], T_LTR_LP_out_calc);
@@ -2504,7 +2504,7 @@ int C_RecompCycle::C_mono_eq_HTR_des::operator()(double T_HTR_LP_out /*K*/, doub
 
 	try
 	{
-	mpc_rc_cycle->mpc_HTR->design_fix_TARGET_calc_outlet(mpc_rc_cycle->ms_des_par.m_des_HX_target_type, mpc_rc_cycle->ms_des_par.m_UA_HT, mpc_rc_cycle->ms_des_par.m_HT_eff_max,
+	mpc_rc_cycle->mpc_HTR->design_fix_TARGET_calc_outlet(mpc_rc_cycle->ms_des_par.m_des_HX_allocation_type, mpc_rc_cycle->ms_des_par.m_UA_HT, mpc_rc_cycle->ms_des_par.m_HT_eff_max,
 		mpc_rc_cycle->m_temp_last[MIXER_OUT], mpc_rc_cycle->m_pres_last[MIXER_OUT], m_dot_HTR_in, mpc_rc_cycle->m_pres_last[HTR_HP_OUT],
 		mpc_rc_cycle->m_temp_last[TURB_OUT], mpc_rc_cycle->m_pres_last[TURB_OUT], m_dot_HTR_in, mpc_rc_cycle->m_pres_last[HTR_LP_OUT],
 		m_Q_dot_HT, mpc_rc_cycle->m_temp_last[HTR_HP_OUT], T_HTR_LP_out_calc);
@@ -2600,7 +2600,10 @@ void C_RecompCycle::opt_design_core(int & error_code)
 	ms_des_par.m_tol = ms_opt_des_par.m_tol;
 	ms_des_par.m_N_turbine = ms_opt_des_par.m_N_turbine;
 
-	ms_des_par.m_des_objective_type = ms_opt_des_par.m_des_objective_type;	//[-]
+	ms_des_par.m_des_objective_type = ms_opt_des_par.m_des_objective_type;			//[-]
+	ms_des_par.m_des_HX_allocation_type = ms_opt_des_par.m_des_HX_allocation_type;	//[-]
+	ms_des_par.m_HTR_tech_type = ms_opt_des_par.m_HTR_tech_type;					//[-]
+
 	ms_des_par.m_min_phx_deltaT = ms_opt_des_par.m_min_phx_deltaT;			//[C]
 
 	// ms_des_par members to be defined by optimizer and set in 'design_point_eta':
@@ -2845,7 +2848,9 @@ void C_RecompCycle::auto_opt_design_core(int & error_code)
 	ms_opt_des_par.m_opt_tol = ms_auto_opt_des_par.m_opt_tol;
 	ms_opt_des_par.m_N_turbine = ms_auto_opt_des_par.m_N_turbine;
 
-	ms_opt_des_par.m_des_objective_type = ms_auto_opt_des_par.m_des_objective_type;	//[-]
+	ms_opt_des_par.m_des_objective_type = ms_auto_opt_des_par.m_des_objective_type;			//[-]
+	ms_opt_des_par.m_des_HX_allocation_type = ms_auto_opt_des_par.m_des_HX_allocation_type;	//[-]
+	ms_opt_des_par.m_HTR_tech_type = ms_auto_opt_des_par.m_HTR_tech_type;					//[-]
 	ms_opt_des_par.m_min_phx_deltaT = ms_auto_opt_des_par.m_min_phx_deltaT;			//[C]
 
 	// Outer optimization loop
@@ -2893,7 +2898,7 @@ void C_RecompCycle::auto_opt_design_core(int & error_code)
 		ms_opt_des_par.m_recomp_frac_guess = 0.3;
 		ms_opt_des_par.m_fixed_recomp_frac = false;
 		ms_opt_des_par.m_LT_frac_guess = 0.5;
-		if (ms_des_par.m_des_HX_target_type == 1) {
+		if (ms_opt_des_par.m_des_HX_allocation_type == 1) {
 			ms_opt_des_par.m_LT_frac_guess = 1 - 600000 / ms_opt_des_par.m_UA_rec_total;
 		}
 		ms_opt_des_par.m_fixed_LT_frac = false;
@@ -3453,7 +3458,7 @@ void C_RecompCycle::finalize_design(int & error_code)
 	ms_des_solved.m_UA_HTR = ms_des_par.m_UA_HT;
 	
 
-	spdlog::get("logger")->info(std::to_string(ms_des_par.m_des_HX_target_type) +
+	spdlog::get("logger")->info(std::to_string(ms_des_par.m_des_HX_allocation_type) +
 		", " + std::to_string(ms_des_par.m_UA_HT + ms_des_par.m_UA_LT) +
 		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_aUA_design_total + ms_des_solved.ms_LTR_des_solved.m_aUA_design_total) +
 		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_cost_design_total + ms_des_solved.ms_LTR_des_solved.m_cost_design_total) +

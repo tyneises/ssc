@@ -102,6 +102,8 @@ public:
 		double m_N_turbine;					//[rpm] Turbine shaft speed (negative values link turbine to compressor)
 		int m_is_recomp_ok;					//[-] 1 = yes, 0 = no, other = invalid
 
+		int m_HTR_tech_type;				//[-] 1: Counterflow PCHE, 2: Regenerator
+		int m_des_HX_allocation_type;		//0: UA, 1: Cost
 		int m_des_objective_type;			//[2] = min phx deltat then max eta, [else] max eta
 		double m_min_phx_deltaT;			//[C]
 
@@ -124,6 +126,8 @@ public:
 			m_cycle_config = 1;
 
 			// Default to standard optimization to maximize cycle efficiency
+			m_des_HX_allocation_type = 0;	//UA
+			m_HTR_tech_type = 1;			// PCHE
 			m_des_objective_type = 1;
 			m_min_phx_deltaT = 0.0;		//[C]
 

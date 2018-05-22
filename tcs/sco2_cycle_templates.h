@@ -170,6 +170,8 @@ public:
 		double m_PR_mc_guess;				//[-] Initial guess for ratio of P_mc_out to P_mc_in
 		bool m_fixed_PR_mc;					//[-] if true, ratio of P_mc_out to P_mc_in is fixed at PR_mc_guess
 		
+		int m_HTR_tech_type;				//[-] 1: Counterflow PCHE, 2: Regenerator
+		int m_des_HX_allocation_type;		//0: UA, 1: Cost
 		int m_des_objective_type;		//[2] = min phx deltat then max eta, [else] max eta
 		double m_min_phx_deltaT;		//[C]
 
@@ -191,6 +193,8 @@ public:
 			m_fixed_PR_mc = false;		//[-] If false, then should default to optimizing this parameter
 			
 			// Default to standard optimization to maximize cycle efficiency
+			m_des_HX_allocation_type = 0;	//UA
+			m_HTR_tech_type = 1;			// PCHE
 			m_des_objective_type = 1;
 			m_min_phx_deltaT = 0.0;		//[C]
 
