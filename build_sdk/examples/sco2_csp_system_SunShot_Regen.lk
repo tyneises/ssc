@@ -19,8 +19,15 @@ var('is_recomp_ok', 1);			//[-] 1 = yes, 2 = simple cycle only
 
 
 var('design_method', 2);		//[-] 1 = Specify efficiency, 2 = Specify total recup UA
-var('des_HX_allocation', 1);    //[-] [0] = hit total UA (kW/K), [1] hit total Cost ($)
-var('HTR_tech_type', 2);		//[1] = Counterflow PCHE, [2] Regenerator
+var('des_HX_allocation', 1);    //0 = hit total UA [kW/K], 1 =  hit total Cost [$]
+var('HTR_tech_type', 2);		//1 = Counterflow PCHE, 2 = Regenerator
+var('HTR_target_2', 0);			//0 = Maximum Pressure Drop [kPa], 1 = Aspect Ratio (L/D) [-]
+var('HTR_target_2_value', 216);	//Maximum Pressure Drop [kPa]
+var('HTR_operation_mode', 0);	//[-] 0 = Parallel, 1 = Redundant
+var('HTR_P_0', 145);		    //[s] Bed switching time
+var('HTR_D_s', 0.0017);		    //[m] Bed sphere diameter
+var('HTR_e_v', 0.37);		    //[-] Free volume fraction
+var('HTR_Q_dot_loss', 100);		//[kW] Estimated heat transfer losses
 
 if(var('design_method') == 1)
 {
@@ -192,7 +199,7 @@ if( false )
 //var('T_amb_od_in',[45,44,43,42,41,40,39,38,37,36,36,34,33,32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15]);		//[C]
 
 // Run Model
-for(UA = 2000000; UA <= 8250000; UA = UA + 250000)
+for(UA = 5000000; UA <= 5000000; UA = UA + 250000)
 {
 	var('UA_recup_tot_des', UA);
 	outln(UA);

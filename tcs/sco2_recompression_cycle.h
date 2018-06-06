@@ -101,7 +101,6 @@ public:
 		double m_aUA_HT;					//[kW/K] Actrual UA in HTR
 		double m_cost_LT;					//[$] Cost of LTR
 		double m_cost_HT;					//[$] Cost of HTR
-		int m_HTR_tech_type;				//[-] 1: Counterflow PCHE, 2: Regenerator
 		double m_LT_eff_max;				//[-] Maximum allowable effectiveness in LT recuperator
 		double m_HT_eff_max;				//[-] Maximum allowable effectiveness in HT recuperator
 		double m_recomp_frac;				//[-] Fraction of flow that bypasses the precooler and the main compressor at the design point
@@ -112,6 +111,16 @@ public:
 		double m_P_high_limit;				//[kPa] maximum allowable pressure in cycle
 		double m_tol;						//[-] Convergence tolerance
 		double m_N_turbine;					//[rpm] Turbine shaft speed (negative values link turbine to compressor)
+
+		int m_HTR_tech_type;				//[-] 1: Counterflow PCHE, 2: Regenerator
+		int m_HTR_target_2;					//0: Maximum Pressure Drop [kPa], 1: Aspect Ratio (L/D) [-]. Regenerator only. Default 0. 
+		double m_HTR_target_2_value;			//Maximum Pressure Drop [kPa] or Aspect Ratio (L/D) [-]. Regenerator only. Default 216 kPa; 
+		int m_HTR_operation_mode;			//[-] 0: Parallel: 2 beds cold stream, 2 beds hot stream, massflow split. 1: Redundant: 2 beds cold stream, 2 beds hot stream, 1 bed designed to handle full massflow.
+													//Regenerator only. Default 0.
+		double m_HTR_P_0;						//[s] Bed switching time. Regenerator only. Default is 45s.
+		double m_HTR_D_s;					//[m] Bed sphere diameter. Regenerator only. Default is 0.003 m.
+		double m_HTR_e_v;					//[-] Free volume fraction. Fixed for specific packing arrangement. Regenerator only. Default 0.37.
+		double m_HTR_Q_dot_loss;			//[kW] Estimated heat transfer losses. Regenerator only. Default 100 kW.
 
 		int m_des_HX_allocation_type;		//[0] = hit total UA (kW/K), [1] hit total Cost ($)
 		int m_des_objective_type;		//[2] = min phx deltat then max eta, [else] max eta
@@ -126,8 +135,17 @@ public:
 			m_N_sub_hxrs = -1;
 
 			// Default to PCHE for HTR
+			m_HTR_tech_type = 1;			// PCHE	
 			m_des_HX_allocation_type = 0;	//UA
-			m_HTR_tech_type = 1;			// PCHE
+
+			// Not used for PCHE
+			m_HTR_target_2 = 0;
+			m_HTR_target_2_value = 216;
+			m_HTR_operation_mode = 0;
+			m_HTR_P_0 = 45;
+			m_HTR_D_s = 0.003;
+			m_HTR_e_v = 0.37;
+			m_HTR_Q_dot_loss = 100;
 
 			// Default to standard optimization to maximize cycle efficiency
 			m_des_objective_type = 1;
@@ -167,6 +185,16 @@ public:
 		
 		int m_HTR_tech_type;				//[-] 1: Counterflow PCHE, 2: Regenerator
 		int m_des_HX_allocation_type;		//0: UA, 1: Cost
+
+		int m_HTR_target_2;					//0: Maximum Pressure Drop [kPa], 1: Aspect Ratio (L/D) [-]. Regenerator only. Default 0. 
+		double m_HTR_target_2_value;			//Maximum Pressure Drop [kPa] or Aspect Ratio (L/D) [-]. Regenerator only. Default 216 kPa; 
+		int m_HTR_operation_mode;			//[-] 0: Parallel: 2 beds cold stream, 2 beds hot stream, massflow split. 1: Redundant: 2 beds cold stream, 2 beds hot stream, 1 bed designed to handle full massflow.
+											//Regenerator only. Default 0.
+		double m_HTR_P_0;						//[s] Bed switching time. Regenerator only. Default is 45s.
+		double m_HTR_D_s;					//[m] Bed sphere diameter. Regenerator only. Default is 0.003 m.
+		double m_HTR_e_v;					//[-] Free volume fraction. Fixed for specific packing arrangement. Regenerator only. Default 0.37.
+		double m_HTR_Q_dot_loss;			//[kW] Estimated heat transfer losses. Regenerator only. Default 100 kW.
+
 		int m_des_objective_type;			//[2] = min phx deltat then max eta, [else] max eta
 		double m_min_phx_deltaT;			//[C]
 
@@ -195,6 +223,16 @@ public:
 			// Default to standard optimization to maximize cycle efficiency
 			m_des_HX_allocation_type = 0;	//UA
 			m_HTR_tech_type = 1;			// PCHE
+
+			// Not used for PCHE
+			m_HTR_target_2 = 0;
+			m_HTR_target_2_value = 216;
+			m_HTR_operation_mode = 0;
+			m_HTR_P_0 = 45;
+			m_HTR_D_s = 0.003;
+			m_HTR_e_v = 0.37;
+			m_HTR_Q_dot_loss = 100;
+
 			m_des_objective_type = 1;
 			m_min_phx_deltaT = 0.0;		//[C]
 
@@ -773,6 +811,25 @@ public:
 		double m_Q_dot_LTR, m_Q_dot_HTR;
 
 		virtual int operator()(double T_HTR_LP_out_guess /*K*/, double *diff_T_HTR_LP_out /*K*/);
+	};
+
+	class C_HTR_LP_dP_des : public C_monotonic_equation
+	{
+	private:
+		C_RecompCycle * mpc_rc_cycle;
+
+	public:
+		C_HTR_LP_dP_des(C_RecompCycle *pc_rc_cycle)
+		{
+			mpc_rc_cycle = pc_rc_cycle;
+		}
+
+		// These values are calculated in the operator() method and need to be extracted from this class
+		//     after convergence
+		double m_w_rc, m_w_mc, m_w_t, m_m_dot_t, m_m_dot_rc, m_m_dot_mc, m_m_dot_carryover;
+		double m_Q_dot_LT, m_Q_dot_HT;
+
+		virtual int operator()(double m_HTR_LP_dP_guess /*kPa*/, double *diff_m_HTR_LP_dP /*kPa*/);
 	};
 
 	class C_HTR_HP_dP_des : public C_monotonic_equation

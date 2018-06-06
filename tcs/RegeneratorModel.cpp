@@ -17,10 +17,12 @@ RegeneratorModel::RegeneratorModel()
 	HotPressureDrop = new MonoSolver<RegeneratorModel>();
 	ColdPressureDrop = new MonoSolver<RegeneratorModel>();
 	Length = new MonoSolver<RegeneratorModel>();
-	Diameter = new MonoSolver<RegeneratorModel>();
+	Diameter_dP = new MonoSolver<RegeneratorModel>();
+	Diameter_AR = new MonoSolver<RegeneratorModel>();
 	PressureSplit = new MonoSolver<RegeneratorModel>();
 	WallThickness = new MonoSolver<RegeneratorModel>();
-	CarryoverMassFlow = new MonoSolver<RegeneratorModel>();
+	CarryoverMassFlow_dP = new MonoSolver<RegeneratorModel>();
+	CarryoverMassFlow_AR = new MonoSolver<RegeneratorModel>();
 	Valve = new MonoSolver<RegeneratorModel>();
 
 	valves = new valve[4];
@@ -37,7 +39,6 @@ RegeneratorModel::RegeneratorModel()
 
 RegeneratorModel::~RegeneratorModel()
 {
-	//spdlog::get("logger")->flush();
 	spdlog::drop("logger");
 
 	delete bedMaterialTable;
@@ -51,10 +52,12 @@ RegeneratorModel::~RegeneratorModel()
 	delete HotPressureDrop;
 	delete ColdPressureDrop;
 	delete Length;
-	delete Diameter;
+	delete Diameter_dP;
+	delete Diameter_AR;
 	delete PressureSplit;
 	delete WallThickness;
-	delete CarryoverMassFlow;
+	delete CarryoverMassFlow_dP;
+	delete CarryoverMassFlow_AR;
 	delete Valve;
 
 	delete[] valves;
@@ -163,7 +166,7 @@ void RegeneratorModel::calculateModel()
 {
 	//							[SECTION 1]
 	//Pressure at hot exit
-	P_H_out = P_H - dP_H;	//[kPa]
+	P_H_out = P_H_in - dP_H;	//[kPa]
 							//Pressure at cold exit
 	P_C_out = P_C - dP_C;	//[kPa]
 
@@ -209,7 +212,7 @@ void RegeneratorModel::calculateModel()
 	T_C_f = (T_C_in + T_C_out) / 2;
 
 	try {
-		packedspheresFitCO2(m_dot_H, D_s, A_fr, L, T_H_f, P_H, e_v, &f_H, &h_H, &NTU_H, &dP_H_calc);
+		packedspheresFitCO2(m_dot_H, D_s, A_fr, L, T_H_f, P_H_in, e_v, &f_H, &h_H, &NTU_H, &dP_H_calc);
 		packedspheresFitCO2(m_dot_C, D_s, A_fr, L, T_C_f, P_C, e_v, &f_C, &h_C, &NTU_C, &dP_C_calc);
 	}
 	catch (const invalid_argument& e) {
@@ -297,17 +300,17 @@ int RegeneratorModel::calculateCost()
 	return 0;
 }
 
-void RegeneratorModel::setInletStates(double T_H_in, double P_H, double m_dot_H, double T_C_in, double P_C, double m_dot_C)
+void RegeneratorModel::setInletStates(double T_H_in, double P_H_in, double m_dot_H, double T_C_in, double P_C, double m_dot_C)
 {
 	this->T_H_in = T_H_in;
-	this->P_H = P_H;
+	this->P_H_in = P_H_in;
 	this->m_dot_H = m_dot_H;
 	this->T_C_in = T_C_in;
 	this->P_C = P_C;
 	this->m_dot_C = m_dot_C;
 	m_dot_carryover = 0;
 
-	if (P_C <= N_co2_props::P_lower_limit || P_H <= N_co2_props::P_lower_limit || P_C >= N_co2_props::P_upper_limit || P_H >= N_co2_props::P_upper_limit) {
+	if (P_C <= N_co2_props::P_lower_limit || P_H_in <= N_co2_props::P_lower_limit || P_C >= N_co2_props::P_upper_limit || P_H_in >= N_co2_props::P_upper_limit) {
 		throw invalid_argument("Inlet pressures are either below " + std::to_string(N_co2_props::P_lower_limit) + "[kPa] or above " + std::to_string(N_co2_props::P_upper_limit) + "[kPa]!");
 	}
 	if (T_H_in <= N_co2_props::T_lower_limit || T_C_in <= N_co2_props::T_lower_limit || T_H_in >= N_co2_props::T_upper_limit || T_C_in >= N_co2_props::T_upper_limit) {
@@ -315,14 +318,14 @@ void RegeneratorModel::setInletStates(double T_H_in, double P_H, double m_dot_H,
 	}
 
 	//Enthalpy at hot inlet
-	CO2_TP(T_H_in, P_H, &CO2State);
+	CO2_TP(T_H_in, P_H_in, &CO2State);
 	h_H_in = CO2State.enth;
 
 	//Enthalpy at cold inlet
 	CO2_TP(T_C_in, P_C, &CO2State);
 	h_C_in = CO2State.enth;
 
-	CO2_TP(T_C_in, P_H, &CO2State);
+	CO2_TP(T_C_in, P_H_in, &CO2State);
 	h_H_out_max_p = CO2State.enth;
 
 	CO2_TP(T_H_in, P_C, &CO2State);
@@ -338,20 +341,35 @@ void RegeneratorModel::setInletStates(double T_H_in, double P_H, double m_dot_H,
 	massflowVariablesInit();
 }
 
+void RegeneratorModel::setOutletStates(double T_H_out, double P_H_out, double T_C_out, double P_C_out)
+{
+	this->T_H_out = T_H_out;
+	this->dP_H = P_H_in - P_H_out;
+	this->T_C_out = T_C_out;
+	this->dP_C = P_C - P_C_out;
+}
+
 void RegeneratorModel::setParameters(double Q_dot_loss, double P_0, double D_s, double e_v)
 {
 	this->Q_dot_loss = Q_dot_loss;
-	this->P_0 = P_0;
 	this->D_s = D_s;
 	this->e_v = e_v;
+	this->P_0 = P_0;
 
 	numberOfCycles = 1.2 * operationYears * 365 * operationHoursPerDay * 60 * 60 / P_0;
 	stressAmplitude = fatigueTable->getValue("Sa", "N", numberOfCycles) * 6.89475729; //Convert ksi to MPA
 }
 
-void RegeneratorModel::setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max_total)
+void RegeneratorModel::setDesignTargets(targetModes::targetModes targetMode, targetModes::target2Modes secondTargetMode, double targetParameter, double secondTargetParameter)
 {
-	this->targetdP_max_total = dP_max_total;
+	this->secondTargetMode = secondTargetMode;
+	if (secondTargetMode == targetModes::target2Modes::dP_max) {
+		this->targetdP_max_total = secondTargetParameter;
+	}
+	else if (secondTargetMode == targetModes::target2Modes::AR) {
+		targetAR = secondTargetParameter;
+	}
+	
 	this->targetMode = targetMode;
 	this->targetParameter = targetParameter;
 }
@@ -387,10 +405,10 @@ void RegeneratorModel::calcCarryoverMassFlow()
 	CO2_TP(T_C_in, P_C, &CO2State);
 	double rho_H_C_extra = CO2State.dens;
 
-	CO2_TP(T_H_in, P_H, &CO2State);
+	CO2_TP(T_H_in, P_H_in, &CO2State);
 	double rho_L_H_extra = CO2State.dens;
 
-	CO2_TP(T_H_out, P_H, &CO2State);
+	CO2_TP(T_H_out, P_H_in, &CO2State);
 	double rho_L_C_extra = CO2State.dens;
 
 	double mass_H = vol_extra / 4 * (rho_H_H_extra - rho_L_H_extra);
@@ -399,10 +417,10 @@ void RegeneratorModel::calcCarryoverMassFlow()
 	double integral_H, integral_L;
 	
 	double dT = 32.1165431 - 1.33843643 * (T_C_in - 273.15) + 0.723818378 * (T_H_in - 273.15)
-		+ 0.00222683779 * P_C - 0.000485963027 * P_H - 17.4313839 * C_m_e;
+		+ 0.00222683779 * P_C - 0.000485963027 * P_H_in - 17.4313839 * C_m_e;
 
 	integral_H = densityIntegral(T_C_in, T_C_out - dT, P_C) * L / fabs(T_C_out - dT - T_C_in);
-	integral_L = densityIntegral(T_H_out + dT, T_H_in, P_H) * L / fabs(T_H_in - T_H_out - dT);
+	integral_L = densityIntegral(T_H_out + dT, T_H_in, P_H_in) * L / fabs(T_H_in - T_H_out - dT);
 	
 
 	double mass = 2 * (e_v * pow(D_fr, 2) / 4 * PI *(integral_H - integral_L) + (mass_C + mass_H)) / CO;
@@ -426,7 +444,7 @@ void RegeneratorModel::calcValvePressureDrops()
 	valves[0].T_in = T_C_in;
 	valves[1].P_in = P_C_out;
 	valves[1].T_in = T_C_out;
-	valves[2].P_in = P_H;
+	valves[2].P_in = P_H_in;
 	valves[2].T_in = T_H_in;
 	valves[3].P_in = P_H_out;
 	valves[3].T_in = T_H_out;
@@ -434,7 +452,7 @@ void RegeneratorModel::calcValvePressureDrops()
 	Valve_SP.solverName = "Valve";
 	Valve_SP.target = 0;
 	Valve_SP.guessValue1 = 25;		Valve_SP.guessValue2 = 50;
-	Valve_SP.lowerBound = 0.1;					Valve_SP.upperBound = P_H;
+	Valve_SP.lowerBound = 0.1;					Valve_SP.upperBound = P_H_in;
 	Valve_SP.tolerance = 0.001;
 	Valve_SP.iterationLimit = 50;
 	Valve_SP.isErrorRel = false;
@@ -508,7 +526,7 @@ int RegeneratorModel::Length_ME(double L, double * dP_max)
 	return 0;
 }
 
-int RegeneratorModel::Diameter_ME(double D_fr, double * targetParameter)
+int RegeneratorModel::Diameter_dP_ME(double D_fr, double * targetParameter)
 {
 	this->D_fr = D_fr;
 
@@ -522,7 +540,7 @@ int RegeneratorModel::Diameter_ME(double D_fr, double * targetParameter)
 		calculateCost();
 		*targetParameter = costModule;
 	}
-	else if (targetMode == targetModes::EPSILON) {
+	else if (targetMode == targetModes::EFF) {
 		*targetParameter = epsilon;
 
 	}
@@ -533,7 +551,33 @@ int RegeneratorModel::Diameter_ME(double D_fr, double * targetParameter)
 	return 0;
 }
 
-int RegeneratorModel::CarryoverMassFlow_ME(double m_dot_carryover, double *comass_difference)
+int RegeneratorModel::Diameter_AR_ME(double D_fr, double * targetParameter)
+{
+	this->D_fr = D_fr;
+	this->L = D_fr * targetAR;
+
+	int status = ColdPressureDrop->solve();
+
+	if (status != C_monotonic_eq_solver::CONVERGED) {
+		return -1;
+	}
+
+	if (targetMode == targetModes::COST) {
+		calculateCost();
+		*targetParameter = costModule;
+	}
+	else if (targetMode == targetModes::EFF) {
+		*targetParameter = epsilon;
+
+	}
+	else if (targetMode == targetModes::UA) {
+		*targetParameter = UA;
+	}
+
+	return 0;
+}
+
+int RegeneratorModel::CarryoverMassFlow_dP_ME(double m_dot_carryover, double *comass_difference)
 {
 	this->m_dot_C -= m_dot_carryover;
 	this->m_dot_H -= m_dot_carryover;
@@ -541,6 +585,27 @@ int RegeneratorModel::CarryoverMassFlow_ME(double m_dot_carryover, double *comas
 	massflowVariablesInit();
 	
 	int status = PressureSplit->solve();
+
+	this->m_dot_C += m_dot_carryover;
+	this->m_dot_H += m_dot_carryover;
+	if (status != C_monotonic_eq_solver::CONVERGED) {
+		return -1;
+	}
+
+	calcCarryoverMassFlow();
+
+	*comass_difference = m_dot_carryover - this->m_dot_carryover;
+	return 0;
+}
+
+int RegeneratorModel::CarryoverMassFlow_AR_ME(double m_dot_carryover, double *comass_difference)
+{
+	this->m_dot_C -= m_dot_carryover;
+	this->m_dot_H -= m_dot_carryover;
+
+	massflowVariablesInit();
+
+	int status = Diameter_AR->solve();
 
 	this->m_dot_C += m_dot_carryover;
 	this->m_dot_H += m_dot_carryover;
@@ -587,7 +652,7 @@ int RegeneratorModel::PressureSplit_ME(double regenMaxDrop_guess, double *regenM
 	targetdP_max = regenMaxDrop_guess;
 	Length->updateTarget(targetdP_max);
 
-	int status = Diameter->solve();
+	int status = Diameter_dP->solve();
 	if (status != C_monotonic_eq_solver::CONVERGED) {
 		return -1;
 	}
@@ -668,7 +733,7 @@ int RegeneratorModel::WallThickness_ME(double th, double * stressAmplitude)
 	return 0;
 }
 
-int RegeneratorModel::solveSystem()
+int RegeneratorModel::getDesignSolution()
 {
 	HeatTransfer_SP.solverName = "Balance Heat Tansfer";
 	HeatTransfer_SP.target = 0;
@@ -679,16 +744,21 @@ int RegeneratorModel::solveSystem()
 	HeatTransfer_SP.isErrorRel = false;
 	HeatTransfer_SP.classInst = this;
 	HeatTransfer_SP.monoEquation = &RegeneratorModel::HeatTransfer_ME;
+	HeatTransfer->setParameters(&HeatTransfer_SP);
 
+	if (secondTargetMode == targetModes::AR) {
+		targetdP_max_total = 300;
+	}
 	HotPressureDrop_SP.solverName = "Balance Hot Pressure Drop";
 	HotPressureDrop_SP.target = 0;
 	HotPressureDrop_SP.guessValue1 = 0.6*targetdP_max_total - 1;		HotPressureDrop_SP.guessValue2 = 0.6*targetdP_max_total;
-	HotPressureDrop_SP.lowerBound = 0.1;					HotPressureDrop_SP.upperBound = P_H;
+	HotPressureDrop_SP.lowerBound = 0.1;					HotPressureDrop_SP.upperBound = P_H_in;
 	HotPressureDrop_SP.tolerance = 0.0001;
 	HotPressureDrop_SP.iterationLimit = 50;
 	HotPressureDrop_SP.isErrorRel = false;
 	HotPressureDrop_SP.classInst = this;
 	HotPressureDrop_SP.monoEquation = &RegeneratorModel::HotPressureDrop_ME;
+	HotPressureDrop->setParameters(&HotPressureDrop_SP);
 
 	ColdPressureDrop_SP.solverName = "Balance Cold Pressure Drop";
 	ColdPressureDrop_SP.target = 0;
@@ -699,46 +769,73 @@ int RegeneratorModel::solveSystem()
 	ColdPressureDrop_SP.isErrorRel = false;
 	ColdPressureDrop_SP.classInst = this;
 	ColdPressureDrop_SP.monoEquation = &RegeneratorModel::ColdPressureDrop_ME;
+	ColdPressureDrop->setParameters(&ColdPressureDrop_SP);
 	
-	targetdP_max = 0.8*targetdP_max_total;
-	Length_SP.solverName = "Length Solver";
-	Length_SP.target = targetdP_max;
-	Length_SP.guessValue1 = 0.8;		Length_SP.guessValue2 = 1;
-	Length_SP.lowerBound = 0.1;			Length_SP.upperBound = 10;
-	Length_SP.tolerance = 0.0001;
-	Length_SP.iterationLimit = 50;
-	Length_SP.isErrorRel = true;
-	Length_SP.classInst = this;
-	Length_SP.monoEquation = &RegeneratorModel::Length_ME;
+	if (secondTargetMode == targetModes::dP_max) {
+		targetdP_max = 0.8*targetdP_max_total;
+		Length_SP.solverName = "Length Solver";
+		Length_SP.target = targetdP_max;
+		Length_SP.guessValue1 = 0.8;		Length_SP.guessValue2 = 1;
+		Length_SP.lowerBound = 0.1;			Length_SP.upperBound = 10;
+		Length_SP.tolerance = 0.0001;
+		Length_SP.iterationLimit = 50;
+		Length_SP.isErrorRel = true;
+		Length_SP.classInst = this;
+		Length_SP.monoEquation = &RegeneratorModel::Length_ME;
+		Length->setParameters(&Length_SP);
 
-	Diameter_SP.solverName = "Diameter Solver";
-	Diameter_SP.target = targetParameter;
-	Diameter_SP.guessValue1 = 0.7;		Diameter_SP.guessValue2 = 0.9;
-	Diameter_SP.lowerBound = 0.1;		Diameter_SP.upperBound = 10;
-	Diameter_SP.tolerance = 0.0001;
-	Diameter_SP.iterationLimit = 50;
-	Diameter_SP.isErrorRel = true;
-	Diameter_SP.classInst = this;
-	Diameter_SP.monoEquation = &RegeneratorModel::Diameter_ME;
+		Diameter_dP_SP.solverName = "Diameter_dP Solver";
+		Diameter_dP_SP.target = targetParameter;
+		Diameter_dP_SP.guessValue1 = 0.7;		Diameter_dP_SP.guessValue2 = 0.9;
+		Diameter_dP_SP.lowerBound = 0.1;		Diameter_dP_SP.upperBound = 10;
+		Diameter_dP_SP.tolerance = 0.0001;
+		Diameter_dP_SP.iterationLimit = 50;
+		Diameter_dP_SP.isErrorRel = true;
+		Diameter_dP_SP.classInst = this;
+		Diameter_dP_SP.monoEquation = &RegeneratorModel::Diameter_dP_ME;
+		Diameter_dP->setParameters(&Diameter_dP_SP);
 
-	PressureSplit_SP.solverName = "Splits Pressure Drop Between Regenerator and Valves";
-	PressureSplit_SP.target = targetdP_max_total;
-	PressureSplit_SP.guessValue1 = targetdP_max_total * 0.8;		PressureSplit_SP.guessValue2 = targetdP_max_total * 0.9;
-	PressureSplit_SP.lowerBound = 0.1;					PressureSplit_SP.upperBound = P_H;
-	PressureSplit_SP.tolerance = 0.0001;
-	PressureSplit_SP.iterationLimit = 50;
-	PressureSplit_SP.isErrorRel = true;
-	PressureSplit_SP.classInst = this;
-	PressureSplit_SP.monoEquation = &RegeneratorModel::PressureSplit_ME;
+		PressureSplit_SP.solverName = "Splits Pressure Drop Between Regenerator and Valves";
+		PressureSplit_SP.target = targetdP_max_total;
+		PressureSplit_SP.guessValue1 = targetdP_max_total * 0.8;		PressureSplit_SP.guessValue2 = targetdP_max_total * 0.9;
+		PressureSplit_SP.lowerBound = 0.1;					PressureSplit_SP.upperBound = P_H_in;
+		PressureSplit_SP.tolerance = 0.0001;
+		PressureSplit_SP.iterationLimit = 50;
+		PressureSplit_SP.isErrorRel = true;
+		PressureSplit_SP.classInst = this;
+		PressureSplit_SP.monoEquation = &RegeneratorModel::PressureSplit_ME;
+		PressureSplit->setParameters(&PressureSplit_SP);
 
-	CarryoverMassFlow_SP.solverName = "Carryover Mass Solver";
-	CarryoverMassFlow_SP.target = 0;
-	CarryoverMassFlow_SP.lowerBound = 0;		CarryoverMassFlow_SP.upperBound = min(m_dot_C, m_dot_H);
-	CarryoverMassFlow_SP.tolerance = 0.01;
-	CarryoverMassFlow_SP.iterationLimit = 50;
-	CarryoverMassFlow_SP.isErrorRel = false;
-	CarryoverMassFlow_SP.classInst = this;
-	CarryoverMassFlow_SP.monoEquation = &RegeneratorModel::CarryoverMassFlow_ME;
+		CarryoverMassFlow_dP_SP.solverName = "Carryover Mass dP Solver";
+		CarryoverMassFlow_dP_SP.target = 0;
+		CarryoverMassFlow_dP_SP.lowerBound = 0;		CarryoverMassFlow_dP_SP.upperBound = min(m_dot_C, m_dot_H);
+		CarryoverMassFlow_dP_SP.tolerance = 0.01;
+		CarryoverMassFlow_dP_SP.iterationLimit = 50;
+		CarryoverMassFlow_dP_SP.isErrorRel = false;
+		CarryoverMassFlow_dP_SP.classInst = this;
+		CarryoverMassFlow_dP_SP.monoEquation = &RegeneratorModel::CarryoverMassFlow_dP_ME;
+	}
+	else if (secondTargetMode == targetModes::AR) {
+		Diameter_AR_SP.solverName = "Diameter_AR Solver";
+		Diameter_AR_SP.target = targetParameter;
+		Diameter_AR_SP.guessValue1 = 0.7;		Diameter_AR_SP.guessValue2 = 0.9;
+		Diameter_AR_SP.lowerBound = 0.1;		Diameter_AR_SP.upperBound = 10;
+		Diameter_AR_SP.tolerance = 0.0001;
+		Diameter_AR_SP.iterationLimit = 50;
+		Diameter_AR_SP.isErrorRel = true;
+		Diameter_AR_SP.classInst = this;
+		Diameter_AR_SP.monoEquation = &RegeneratorModel::Diameter_AR_ME;
+		Diameter_AR->setParameters(&Diameter_AR_SP);
+
+		CarryoverMassFlow_AR_SP.solverName = "Carryover Mass AR Solver";
+		CarryoverMassFlow_AR_SP.target = 0;
+		CarryoverMassFlow_AR_SP.lowerBound = 0;		CarryoverMassFlow_AR_SP.upperBound = min(m_dot_C, m_dot_H);
+		CarryoverMassFlow_AR_SP.tolerance = 0.01;
+		CarryoverMassFlow_AR_SP.iterationLimit = 50;
+		CarryoverMassFlow_AR_SP.isErrorRel = false;
+		CarryoverMassFlow_AR_SP.classInst = this;
+		CarryoverMassFlow_AR_SP.monoEquation = &RegeneratorModel::CarryoverMassFlow_AR_ME;
+	}
 
 	WallThickness_SP.solverName = "Wall Thickness";
 	WallThickness_SP.target = stressAmplitude;
@@ -749,25 +846,61 @@ int RegeneratorModel::solveSystem()
 	WallThickness_SP.isErrorRel = true;
 	WallThickness_SP.classInst = this;
 	WallThickness_SP.monoEquation = &RegeneratorModel::WallThickness_ME;
-
-	HeatTransfer->setParameters(&HeatTransfer_SP);
-	HotPressureDrop->setParameters(&HotPressureDrop_SP);
-	ColdPressureDrop->setParameters(&ColdPressureDrop_SP);
-	Length->setParameters(&Length_SP);
-	Diameter->setParameters(&Diameter_SP);
-	PressureSplit->setParameters(&PressureSplit_SP);
 	WallThickness->setParameters(&WallThickness_SP);
 	
-	int statusSolver = Diameter->solve();
+	int statusSolver;
+	if (secondTargetMode == targetModes::dP_max) {
+		statusSolver = Diameter_dP->solve();
+	}
+	else if (secondTargetMode == targetModes::AR) {
+		statusSolver = Diameter_AR->solve();
+	}
+
 	if (statusSolver != C_monotonic_eq_solver::CONVERGED) {
 		return -1;
 	}
 	
 	calcCarryoverMassFlow();
+	calcValvePressureDrops();
 
-	CarryoverMassFlow_SP.guessValue1 = m_dot_carryover;
-	CarryoverMassFlow_SP.guessValue2 = m_dot_carryover + 1;
-	CarryoverMassFlow->setParameters(&CarryoverMassFlow_SP);
+	if (secondTargetMode == targetModes::dP_max) {
+		CarryoverMassFlow_dP_SP.guessValue1 = m_dot_carryover;
+		CarryoverMassFlow_dP_SP.guessValue2 = m_dot_carryover + 1;
+		CarryoverMassFlow_dP->setParameters(&CarryoverMassFlow_dP_SP);
+	
+		if (D_fr - 0.001 < Diameter_dP_SP.lowerBound) {
+			Diameter_dP->updateGuesses(D_fr, D_fr + 0.001);
+		}
+		else {
+			Diameter_dP->updateGuesses(D_fr - 0.001, D_fr);
+		}
+
+		if (L - 0.001 < Length_SP.lowerBound) {
+			Length->updateGuesses(L, L + 0.001);
+		}
+		else {
+			Length->updateGuesses(L - 0.001, L);
+		}
+
+		if (dP_max - 10 < PressureSplit_SP.lowerBound) {
+			PressureSplit->updateGuesses(dP_max, dP_max + 10);
+		}
+		else {
+			PressureSplit->updateGuesses(dP_max - 10, dP_max);
+		}
+	}
+	else if (secondTargetMode == targetModes::AR) {
+		CarryoverMassFlow_AR_SP.guessValue1 = m_dot_carryover;
+		CarryoverMassFlow_AR_SP.guessValue2 = m_dot_carryover + 1;
+		CarryoverMassFlow_AR->setParameters(&CarryoverMassFlow_AR_SP);
+
+		if (D_fr - 0.001 < Diameter_AR_SP.lowerBound) {
+			Diameter_AR->updateGuesses(D_fr, D_fr + 0.001);
+		}
+		else {
+			Diameter_AR->updateGuesses(D_fr - 0.001, D_fr);
+		}
+	}
 
 	if (T_H_out - 1 < HeatTransfer_SP.lowerBound) {
 		HeatTransfer->updateGuesses(T_H_out, T_H_out + 1);
@@ -790,29 +923,14 @@ int RegeneratorModel::solveSystem()
 		ColdPressureDrop->updateGuesses(dP_C - 10, dP_C);
 	}
 
-	if (D_fr - 0.001 < Diameter_SP.lowerBound) {
-		Diameter->updateGuesses(D_fr, D_fr + 0.001);
+	double tolerance;
+	if (secondTargetMode == targetModes::dP_max) {
+		statusSolver = CarryoverMassFlow_dP->solve(&tolerance);
 	}
-	else {
-		Diameter->updateGuesses(D_fr - 0.001, D_fr);
+	else if (secondTargetMode == targetModes::AR) {
+		statusSolver = CarryoverMassFlow_AR->solve(&tolerance);
 	}
 	
-	if (L - 0.001 < Length_SP.lowerBound) {
-		Length->updateGuesses(L, L + 0.001);
-	}
-	else {
-		Length->updateGuesses(L - 0.001, L);
-	}
-
-	if (dP_max - 10 < PressureSplit_SP.lowerBound) {
-		PressureSplit->updateGuesses(dP_max, dP_max + 10);
-	}
-	else {
-		PressureSplit->updateGuesses(dP_max - 10, dP_max);
-	}
-
-	double tolerance;
-	statusSolver = CarryoverMassFlow->solve(&tolerance);
 	if (statusSolver != C_monotonic_eq_solver::CONVERGED) {
 		if (isfinite(tolerance) == false) {
 			return -1;
@@ -824,6 +942,13 @@ int RegeneratorModel::solveSystem()
 		}
 	}
 
+	if (secondTargetMode == targetModes::AR) {
+		calcValvePressureDrops();
+		dP_C_total = dP_C + valves[0].dP + valves[1].dP;
+		dP_H_total = dP_H + valves[2].dP + valves[3].dP;
+		dP_total_max = max(dP_C_total, dP_H_total);
+	}
+
 	carryoverEnthDrop();
 	if (calculateCost() != 0) {
 		return -1;
@@ -831,6 +956,22 @@ int RegeneratorModel::solveSystem()
 
 	m_dot_H -= m_dot_carryover;
 	m_dot_C -= m_dot_carryover;
+
+	return 0;
+}
+
+int RegeneratorModel::getOffDesignSolution()
+{
+	calcCarryoverMassFlow();
+
+	try {
+		calculateModel();
+	}
+	catch (const invalid_argument& e) {
+		return -1;
+	}
+
+	
 
 	return 0;
 }

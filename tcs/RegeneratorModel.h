@@ -21,15 +21,20 @@ namespace operationModes {
 	};
 }
 namespace targetModes {
-	/*! /brief There target modes are 'EPSILON', COST' and 'UA'.
-		'EPSILON' - allows to set effectiveness value as a target.
+	/*! /brief There target modes are 'EFF', COST' and 'UA'.
+		'EFF' - allows to set effectiveness value as a target.
 		'COST' - allows to set regenerator cost as a target.
 		'UA' - allows to set UA as a target.
 	*/
 	enum targetModes {
-		EPSILON,
+		EFF,
 		COST,
 		UA
+	};
+
+	enum target2Modes {
+		dP_max,
+		AR
 	};
 }
 
@@ -135,7 +140,7 @@ private:
 	double T_H_in;
 
 	//! Pressure at hot inlet in [kPa]
-	double P_H;
+	double P_H_in;
 
 	//! Enthalpy at hot inlet in [kJ/kg]
 	double h_H_in;
@@ -179,7 +184,7 @@ private:
 	//! Enthalpy at state fixed by T_C_in and P_H_out in [kJ/kg]
 	double h_H_out_max;
 
-	//! Enthalpy at state fixed by T_C_in and P_H in [kJ/kg]
+	//! Enthalpy at state fixed by T_C_in and P_H_in in [kJ/kg]
 	double h_H_out_max_p;
 
 	/*! \brief Calculated pressure drop at hot side in [kPa]
@@ -410,6 +415,10 @@ private:
 	*/
 	double dP_total_max;
 
+	double targetAR;
+
+	double AR;
+
 	/*! \brief Heat transferred between cold and hot sides in [kW]
 		\sa Q_dot_calc, Q_dot_a, Q_dot_loss, CalculateThermoAndPhysicalModels()
 	*/
@@ -506,6 +515,8 @@ private:
 		\sa targetParameter, targetModes
 	*/
 	targetModes::targetModes targetMode;
+
+	targetModes::target2Modes secondTargetMode;
 
 	/*! \brief Thickness of the insulation on the inside of the D_shell pipe [m]
 		\sa D_fr, D_shell
@@ -754,10 +765,15 @@ private:
 	*/
 	MonoSolver<RegeneratorModel>* Length;
 
-	/*! \brief Monotonic equation solver that finds D_fr that hits targetParameter.
-		\sa Diameter_ME
+	/*! \brief Monotonic equation solver that finds D_fr that hits targetParameter for dP_max target2Mode.
+		\sa Diameter_dP_ME
 	*/
-	MonoSolver<RegeneratorModel>* Diameter;
+	MonoSolver<RegeneratorModel>* Diameter_dP;
+
+	/*! \brief Monotonic equation solver that finds D_fr that hits targetParameter for AR target2Mode.
+	\sa Diameter_dP_ME
+	*/
+	MonoSolver<RegeneratorModel>* Diameter_AR;
 
 	/*! \brief Monotonic equation solver that splits pressure drop between valves and regenerator itself.
 	\sa PressureSplit_ME
@@ -765,9 +781,11 @@ private:
 	MonoSolver<RegeneratorModel>* PressureSplit;
 
 	/*! \brief Monotonic equation solver that balances carryover mass flow and regenerator mass flow.
-		\sa CarryoverMassFlow_ME
+		\sa CarryoverMassFlow_dP_ME
 	*/
-	MonoSolver<RegeneratorModel>* CarryoverMassFlow;
+	MonoSolver<RegeneratorModel>* CarryoverMassFlow_dP;
+
+	MonoSolver<RegeneratorModel>* CarryoverMassFlow_AR;
 
 	/*! \brief Monotonic equation solver that calculates wall thickness.
 		\sa WallThickness_ME
@@ -798,8 +816,10 @@ private:
 	SolverParameters<RegeneratorModel> HotPressureDrop_SP;
 	SolverParameters<RegeneratorModel> ColdPressureDrop_SP;
 	SolverParameters<RegeneratorModel> Length_SP;
-	SolverParameters<RegeneratorModel> Diameter_SP;
-	SolverParameters<RegeneratorModel> CarryoverMassFlow_SP;
+	SolverParameters<RegeneratorModel> Diameter_dP_SP;
+	SolverParameters<RegeneratorModel> Diameter_AR_SP;
+	SolverParameters<RegeneratorModel> CarryoverMassFlow_dP_SP;
+	SolverParameters<RegeneratorModel> CarryoverMassFlow_AR_SP;
 	SolverParameters<RegeneratorModel> PressureSplit_SP;
 	SolverParameters<RegeneratorModel> WallThickness_SP;
 	SolverParameters<RegeneratorModel> Valve_SP;
@@ -813,14 +833,16 @@ public:
 		Mass flows adjusted, depending on operationMode.
 		setParameters() prior to calling this method!
 		\param T_H_in Temperature of fluid at hot inlet in [K]
-		\param P_H Pressure of fluid at hot inlet in [kPa]
+		\param P_H_in Pressure of fluid at hot inlet in [kPa]
 		\param m_dot_H Mass flow rate of hot stream in [kg/s]
 		\param T_C_in Temperature of fluid at cold inlet in [K]
 		\param P_C Pressure of fluid at cold inlet in [kPa]
 		\param m_dot_C Mass flow rate of cold stream in [kg/s]
 		\sa setParameters(), setDesignTargets()
 	*/
-	void setInletStates(double T_H_in, double P_H, double m_dot_H, double T_C_in, double P_C, double m_dot_C);
+	void setInletStates(double T_H_in, double P_H_in, double m_dot_H, double T_C_in, double P_C, double m_dot_C);
+
+	void setOutletStates(double T_H_out, double P_H_out, double T_C_out, double P_C_out);
 
 	/*!	\brief Sets flow and regenerator parameters
 
@@ -841,7 +863,7 @@ public:
 		\param dP_max Target maximum pressure drop in the system in [kPa]
 		\sa setParameters(), setInletState()
 	*/
-	void setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max);
+	void setDesignTargets(targetModes::targetModes targetMode, targetModes::target2Modes secondTargetMode, double targetParameter, double secondTargetParameter);
 
 	void setValves(valve* valves);
 
@@ -849,13 +871,16 @@ public:
 	int HotPressureDrop_ME(double dP_H, double * dP_HsDifference);
 	int ColdPressureDrop_ME(double dP_C, double * dP_CsDifference);
 	int Length_ME(double L, double * dP_max);
-	int Diameter_ME(double D_fr, double * targetParameter);
-	int CarryoverMassFlow_ME(double m_dot_carryover, double * comass_difference);
+	int Diameter_dP_ME(double D_fr, double * targetParameter);
+	int Diameter_AR_ME(double D_fr, double * targetParameter);
+	int CarryoverMassFlow_dP_ME(double m_dot_carryover, double * comass_difference);
+	int CarryoverMassFlow_AR_ME(double m_dot_carryover, double * comass_difference);
 	int WallThickness_ME(double th, double * stressAmplitude);
 	int Valve_ME(double dP, double * dP_difference);
 	int PressureSplit_ME(double regenMaxDrop_guess, double * diffRegenMaxdrop);
 
-	int solveSystem();
+	int getDesignSolution();
+	int getOffDesignSolution();
 	void getSolution(RegeneratorSolution* solution);
 };
 

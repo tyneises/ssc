@@ -171,6 +171,15 @@ public:
 		bool m_fixed_PR_mc;					//[-] if true, ratio of P_mc_out to P_mc_in is fixed at PR_mc_guess
 		
 		int m_HTR_tech_type;				//[-] 1: Counterflow PCHE, 2: Regenerator
+		int m_HTR_target_2;					//0: Maximum Pressure Drop [kPa], 1: Aspect Ratio (L/D) [-]. Regenerator only. Default 0.
+		double m_HTR_target_2_value;			//Maximum Pressure Drop [kPa] or Aspect Ratio (L/D) [-]. Regenerator only. Default 216 kPa; 
+		int m_HTR_operation_mode;			//[-] 0: Parallel: 2 beds cold stream, 2 beds hot stream, massflow split. 1: Redundant: 2 beds cold stream, 2 beds hot stream, 1 bed designed to handle full massflow.
+											//Regenerator only. Default 0.
+		double m_HTR_P_0;						//[s] Bed switching time. Regenerator only. Default is 45s.
+		double m_HTR_D_s;					//[m] Bed sphere diameter. Regenerator only. Default is 0.003 m.
+		double m_HTR_e_v;					//[-] Free volume fraction. Fixed for specific packing arrangement. Regenerator only. Default 0.37.
+		double m_HTR_Q_dot_loss;			//[kW] Estimated heat transfer losses. Regenerator only. Default 100 kW.
+
 		int m_des_HX_allocation_type;		//0: UA, 1: Cost
 		int m_des_objective_type;		//[2] = min phx deltat then max eta, [else] max eta
 		double m_min_phx_deltaT;		//[C]
@@ -195,6 +204,16 @@ public:
 			// Default to standard optimization to maximize cycle efficiency
 			m_des_HX_allocation_type = 0;	//UA
 			m_HTR_tech_type = 1;			// PCHE
+
+			// Not used for PCHE
+			m_HTR_target_2 = 0;
+			m_HTR_target_2_value = 216;
+			m_HTR_operation_mode = 0;
+			m_HTR_P_0 = 45;
+			m_HTR_D_s = 0.003;
+			m_HTR_e_v = 0.37;
+			m_HTR_Q_dot_loss = 100;
+
 			m_des_objective_type = 1;
 			m_min_phx_deltaT = 0.0;		//[C]
 

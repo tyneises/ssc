@@ -198,6 +198,11 @@ void C_sco2_re_hx_pche::initialize(int N_sub_hx)
 	return;
 }
 
+void C_sco2_re_hx_pche::set_HTR_params(int target_1, int target_2, int operation_mode, double target_2_value, double P_0, double D_s, double e_v, double Q_dot_loss)
+{
+	return;
+}
+
 void C_sco2_re_hx_pche::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_target /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,
 	double T_h_in /*K*/, double P_h_in /*kPa*/, double m_dot_h /*kg/s*/, double P_h_out /*kPa*/,
 	double & q_dot /*kWt*/, double & T_c_out /*K*/, double & T_h_out /*K*/)
@@ -252,6 +257,13 @@ const C_HX_counterflow::S_od_solved * C_sco2_re_hx_pche::get_od_solved()
 void C_sco2_re_hx_regen::initialize(int N_sub_hx)
 {
 	mc_hx.initialize(N_sub_hx);
+
+	return;
+}
+
+void C_sco2_re_hx_regen::set_HTR_params(int target_1, int target_2, int operation_mode, double target_2_value, double P_0, double D_s, double e_v, double Q_dot_loss)
+{
+	mc_hx.set_params(target_1, target_2, operation_mode, target_2_value, P_0, D_s, e_v, Q_dot_loss);
 
 	return;
 }

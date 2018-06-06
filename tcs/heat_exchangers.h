@@ -239,6 +239,7 @@ public:
 		double m_DP_cold_des;			//[kPa] cold fluid design pressure drop
 		double m_DP_hot_des;			//[kPa] hot fluid design pressure drop
 		double m_m_dot_carryover;			//[kg/s] Carryover massflow. Only applicable to regenerator
+		double m_HTR_AR;					//[-] Regenerator aspect ratio
 		bool m_eff_limited;				//Flag that is raised if HX performance is limited by maximum allowed effectiveness
 
 		S_des_solved()
@@ -247,6 +248,7 @@ public:
 				m_NTU_design = m_T_h_out = m_T_c_out =
 				m_DP_cold_des = m_DP_hot_des = m_m_dot_carryover = std::numeric_limits<double>::quiet_NaN();
 			m_eff_limited = false;
+			m_HTR_AR = -1;
 		}
 	};
 

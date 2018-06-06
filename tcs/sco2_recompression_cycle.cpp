@@ -1863,15 +1863,18 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	
 	ms_des_par.m_DP_LT[0] = 175;
 	ms_des_par.m_DP_LT[1] = 175;
-	/*ms_des_par.m_DP_HT[0] = 175;
-	ms_des_par.m_DP_HT[1] = 175;*/
-	//ms_des_par.m_DP_HT[0] = 75.95;
-	ms_des_par.m_DP_HT[1] = 216;//175;
-	/*ms_des_par.m_P_mc_out = 25000;
-	ms_des_par.m_P_mc_in = 6735.210923;
-	ms_des_par.m_recomp_frac = 0.35;
-	ms_des_par.m_UA_LT = 7500000 - 3750000;
-	ms_des_par.m_UA_HT = 3750000;*/
+	
+	if (ms_des_par.m_HTR_target_2 == targetModes::dP_max) {
+		ms_des_par.m_DP_HT[1] = ms_des_par.m_HTR_target_2_value;
+	}
+	else {
+		ms_des_par.m_DP_HT[1] = 216;
+	}
+	
+	if (ms_des_par.m_HTR_tech_type == 1) {
+		ms_des_par.m_DP_HT[0] = 175;
+		ms_des_par.m_DP_HT[1] = 175;
+	}
 
 	if( ms_des_par.m_recomp_frac < 0.01 )
 	{
@@ -1888,12 +1891,23 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		// LTR
 	mc_LT_recup.initialize(ms_des_par.m_N_sub_hxrs);
 		// HTR
-	if (ms_des_par.m_HTR_tech_type != 2)
+	if (ms_des_par.m_HTR_tech_type == 1)
 		mpc_HTR = &mc_HTR_pche;
-	else
+	else 
 		mpc_HTR = &mc_HTR_regen;
-	mpc_HTR->initialize(ms_des_par.m_N_sub_hxrs);
 	
+	mpc_HTR->initialize(ms_des_par.m_N_sub_hxrs);
+
+	if (ms_des_par.m_des_HX_allocation_type == 0) {
+		mpc_HTR->set_HTR_params(targetModes::UA, ms_des_par.m_HTR_target_2, ms_des_par.m_HTR_operation_mode, ms_des_par.m_HTR_target_2_value, ms_des_par.m_HTR_P_0, ms_des_par.m_HTR_D_s,
+																	ms_des_par.m_HTR_e_v, ms_des_par.m_HTR_Q_dot_loss);
+	}
+	else if (ms_des_par.m_des_HX_allocation_type == 1) {
+		mpc_HTR->set_HTR_params(targetModes::COST, ms_des_par.m_HTR_target_2, ms_des_par.m_HTR_operation_mode, ms_des_par.m_HTR_target_2_value, ms_des_par.m_HTR_P_0, ms_des_par.m_HTR_D_s,
+			ms_des_par.m_HTR_e_v, ms_des_par.m_HTR_Q_dot_loss);
+	}
+	
+
 	// Initialize a few variables
 	double m_dot_t, m_dot_mc, m_dot_rc, Q_dot_LT, Q_dot_HT, UA_LT_calc, UA_HT_calc;
 	m_dot_t = m_dot_mc = m_dot_rc = Q_dot_LT = Q_dot_HT = UA_LT_calc = UA_HT_calc = 0.0;
@@ -1903,67 +1917,73 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	m_pres_last[MC_OUT] = ms_des_par.m_P_mc_out;
 	m_temp_last[TURB_IN] = ms_des_par.m_T_t_in;
 
-	C_HTR_HP_dP_des HTR_HP_dP_des_eq(this);
-	C_monotonic_eq_solver HTR_HP_dP_des_solver(HTR_HP_dP_des_eq);
+	C_HTR_LP_dP_des HTR_LP_dP_des_eq(this);
+	C_monotonic_eq_solver HTR_LP_dP_des_solver(HTR_LP_dP_des_eq);
 
-	if (ms_des_par.m_HTR_tech_type == 1)	// m_HTR_tech_type == 1 == recuperator
+	if (ms_des_par.m_HTR_tech_type == 1 || ms_des_par.m_HTR_target_2 == 0)	// m_HTR_tech_type == 1 == recuperator
 	{
-		double diff_HTR_HP_dP_test = std::numeric_limits<double>::quiet_NaN();
-		error_code = HTR_HP_dP_des_solver.test_member_function(ms_des_par.m_DP_HT[1], &diff_HTR_HP_dP_test);
+		double diff_HTR_LP_dP_test = std::numeric_limits<double>::quiet_NaN();
+		error_code = HTR_LP_dP_des_solver.test_member_function(ms_des_par.m_DP_HT[1], &diff_HTR_LP_dP_test);
 		if (error_code != 0)
 			return;
 
 		// Don't expect PCHE model to ever have carryover, but it won't hurt to check here?
-		if (fabs(diff_HTR_HP_dP_test) > ms_des_par.m_tol)
+		/*if (fabs(diff_HTR_LP_dP_test) > ms_des_par.m_tol)
 		{
 			error_code = -22;
 			return;
-		}
+		}*/
 	}
 	else	// m_HTR_tech_type == 2 == regenerator
 	{
 		//Dmitrii. Not sure about correct upper bound and the number of iterations
-		HTR_HP_dP_des_solver.settings(ms_des_par.m_tol, 50, 0, ms_des_par.m_P_mc_out, false);
+		if (ms_des_par.m_HTR_target_2 == 0) {
+			HTR_LP_dP_des_solver.settings(ms_des_par.m_tol, 50, 0, ms_des_par.m_P_mc_out, false);
+		}
+		else if (ms_des_par.m_HTR_target_2 == 1) {
+			HTR_LP_dP_des_solver.settings(0.5, 50, 0, ms_des_par.m_P_mc_out, false);
+		}
+		
 
-		double tol_HTR_HP_dP_des_solved;
-		double m_HTR_HP_dP_des = tol_HTR_HP_dP_des_solved = std::numeric_limits<double>::quiet_NaN();
-		int iter_HTR_HP_dP_des = -1;
+		double tol_HTR_LP_dP_des_solved;
+		double m_HTR_LP_dP_des = tol_HTR_LP_dP_des_solved = std::numeric_limits<double>::quiet_NaN();
+		int iter_HTR_LP_dP_des = -1;
 
-		double HTR_HP_dP_des_guess_lower = ms_des_par.m_DP_HT[1] / 3;
-		double HTR_HP_dP_des_guess_upper = ms_des_par.m_DP_HT[1] / 2 + 1;
+		double HTR_LP_dP_des_guess_lower = ms_des_par.m_DP_HT[1] / 2 + 1;
+		double HTR_LP_dP_des_guess_upper = ms_des_par.m_DP_HT[1];
 
-		/*spdlog::get("logger")->warn("{->HTR_HP_dP; P_H = " + std::to_string(ms_des_par.m_P_mc_out) + 
+		/*spdlog::get("logger")->warn("{->HTR_LP_dP; P_H_in = " + std::to_string(ms_des_par.m_P_mc_out) + 
 			", P_L = " + std::to_string(ms_des_par.m_P_mc_in) +
 			", recomp = " + std::to_string(ms_des_par.m_recomp_frac) +
 			", UA_HT = " + std::to_string(ms_des_par.m_UA_HT));*/
 
-		int HTR_HP_dP_des_code = HTR_HP_dP_des_solver.solve(HTR_HP_dP_des_guess_lower, HTR_HP_dP_des_guess_upper, 0,
-			m_HTR_HP_dP_des, tol_HTR_HP_dP_des_solved, iter_HTR_HP_dP_des);
+		int HTR_LP_dP_des_code = HTR_LP_dP_des_solver.solve(HTR_LP_dP_des_guess_lower, HTR_LP_dP_des_guess_upper, 0,
+			m_HTR_LP_dP_des, tol_HTR_LP_dP_des_solved, iter_HTR_LP_dP_des);
 
-		if (HTR_HP_dP_des_code != C_monotonic_eq_solver::CONVERGED)
+		if (HTR_LP_dP_des_code != C_monotonic_eq_solver::CONVERGED)
 		{
 			//Dmitrii. I don't know what the correct error code would be
 			error_code = -22;
-			//spdlog::get("logger")->warn("<-}HTR_HP_dP; code = " + std::to_string(HTR_HP_dP_des_code));
+			//spdlog::get("logger")->warn("<-}HTR_LP_dP; code = " + std::to_string(HTR_LP_dP_des_code));
 			return;
 		}
 
-		/*spdlog::get("logger")->warn("<-}HTR_HP_dP; HP_dP = " + std::to_string(ms_des_par.m_DP_HT[0]) +
-			", m_dot = " + std::to_string(HTR_HP_dP_des_eq.m_m_dot_t) +
-			", comass = " + std::to_string(HTR_HP_dP_des_eq.m_m_dot_carryover) +
+		/*spdlog::get("logger")->warn("<-}HTR_LP_dP; LP_dP = " + std::to_string(ms_des_par.m_DP_HT[0]) +
+			", m_dot = " + std::to_string(HTR_LP_dP_des_eq.m_m_dot_t) +
+			", comass = " + std::to_string(HTR_LP_dP_des_eq.m_m_dot_carryover) +
 			", UA_HT = " + std::to_string(ms_des_par.m_UA_HT));*/
 	}
 	
 	// Get information calculated in HTR_HP_dP_des_eq
-	double w_rc = HTR_HP_dP_des_eq.m_w_rc;
-	double w_mc = HTR_HP_dP_des_eq.m_w_mc;
-	double w_t = HTR_HP_dP_des_eq.m_w_t;
-	m_dot_t = HTR_HP_dP_des_eq.m_m_dot_t;
-	m_dot_rc = HTR_HP_dP_des_eq.m_m_dot_rc;
-	m_dot_mc = HTR_HP_dP_des_eq.m_m_dot_mc;
-	m_m_dot_carryover = HTR_HP_dP_des_eq.m_m_dot_carryover;
-	Q_dot_LT = HTR_HP_dP_des_eq.m_Q_dot_LT;
-	Q_dot_HT = HTR_HP_dP_des_eq.m_Q_dot_HT;
+	double w_rc = HTR_LP_dP_des_eq.m_w_rc;
+	double w_mc = HTR_LP_dP_des_eq.m_w_mc;
+	double w_t = HTR_LP_dP_des_eq.m_w_t;
+	m_dot_t = HTR_LP_dP_des_eq.m_m_dot_t;
+	m_dot_rc = HTR_LP_dP_des_eq.m_m_dot_rc;
+	m_dot_mc = HTR_LP_dP_des_eq.m_m_dot_mc;
+	m_m_dot_carryover = HTR_LP_dP_des_eq.m_m_dot_carryover;
+	Q_dot_LT = HTR_LP_dP_des_eq.m_Q_dot_LT;
+	Q_dot_HT = HTR_LP_dP_des_eq.m_Q_dot_HT;
 	//ms_des_solved.ms_LTR_des_solved = mc_LT_recup.ms_des_solved;
 	//ms_des_solved.ms_HTR_des_solved = *mpc_HTR->get_des_solved();
 
@@ -2020,6 +2040,80 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	m_m_dot_mc = m_dot_mc;
 	m_m_dot_rc = m_dot_rc;
 	m_m_dot_t = m_dot_t;
+}
+
+int C_RecompCycle::C_HTR_LP_dP_des::operator()(double m_HTR_LP_dP_guess, double * diff_m_HTR_LP_dP)
+{
+	mpc_rc_cycle->ms_des_par.m_DP_HT[1] = m_HTR_LP_dP_guess;
+	//spdlog::get("logger")->info("\tguess = " + std::to_string(m_HTR_LP_dP_guess));
+
+	C_HTR_HP_dP_des HTR_HP_dP_des_eq(mpc_rc_cycle);
+	C_monotonic_eq_solver HTR_HP_dP_des_solver(HTR_HP_dP_des_eq);
+
+	if (mpc_rc_cycle->ms_des_par.m_HTR_tech_type == 1)	// m_HTR_tech_type == 1 == recuperator
+	{
+		double diff_HTR_HP_dP_test = std::numeric_limits<double>::quiet_NaN();
+		int error_code = HTR_HP_dP_des_solver.test_member_function(mpc_rc_cycle->ms_des_par.m_DP_HT[0], &diff_HTR_HP_dP_test);
+		if (error_code != 0)
+			return -1;
+
+		// Don't expect PCHE model to ever have carryover, but it won't hurt to check here?
+		if (fabs(diff_HTR_HP_dP_test) > mpc_rc_cycle->ms_des_par.m_tol)
+		{
+			return -1;
+		}
+	}
+	else	// m_HTR_tech_type == 2 == regenerator
+	{
+		//Dmitrii. Not sure about correct upper bound and the number of iterations
+		if (mpc_rc_cycle->ms_des_par.m_HTR_target_2 == 0) {
+			HTR_HP_dP_des_solver.settings(mpc_rc_cycle->ms_des_par.m_tol, 50, 0, mpc_rc_cycle->ms_des_par.m_P_mc_out, false);
+		}
+		else if (mpc_rc_cycle->ms_des_par.m_HTR_target_2 == 1) {
+			HTR_HP_dP_des_solver.settings(0.5, 50, 0, mpc_rc_cycle->ms_des_par.m_P_mc_out, false);
+		}
+		
+
+		double tol_HTR_HP_dP_des_solved;
+		double m_HTR_HP_dP_des = tol_HTR_HP_dP_des_solved = std::numeric_limits<double>::quiet_NaN();
+		int iter_HTR_HP_dP_des = -1;
+
+		double HTR_HP_dP_des_guess_lower = mpc_rc_cycle->ms_des_par.m_DP_HT[1] / 3;
+		double HTR_HP_dP_des_guess_upper = mpc_rc_cycle->ms_des_par.m_DP_HT[1] / 2 + 1;
+
+		/*spdlog::get("logger")->warn("{->HTR_HP_dP; P_H_in = " + std::to_string(mpc_rc_cycle->ms_des_par.m_P_mc_out) +
+		", P_L = " + std::to_string(mpc_rc_cycle->ms_des_par.m_P_mc_in) +
+		", recomp = " + std::to_string(mpc_rc_cycle->ms_des_par.m_recomp_frac) +
+		", UA_HT = " + std::to_string(mpc_rc_cycle->ms_des_par.m_UA_HT));*/
+
+		int HTR_HP_dP_des_code = HTR_HP_dP_des_solver.solve(HTR_HP_dP_des_guess_lower, HTR_HP_dP_des_guess_upper, 0,
+			m_HTR_HP_dP_des, tol_HTR_HP_dP_des_solved, iter_HTR_HP_dP_des);
+
+		if (HTR_HP_dP_des_code != C_monotonic_eq_solver::CONVERGED)
+		{
+			//spdlog::get("logger")->warn("<-}HTR_HP_dP; code = " + std::to_string(HTR_HP_dP_des_code));
+			return -1;
+		}
+
+		/*spdlog::get("logger")->warn("<-}HTR_HP_dP; HP_dP = " + std::to_string(mpc_rc_cycle->ms_des_par.m_DP_HT[0]) +
+		", m_dot = " + std::to_string(HTR_HP_dP_des_eq.m_m_dot_t) +
+		", comass = " + std::to_string(HTR_HP_dP_des_eq.m_m_dot_carryover) +
+		", UA_HT = " + std::to_string(mpc_rc_cycle->ms_des_par.m_UA_HT));*/
+	}
+
+	this->m_w_rc = HTR_HP_dP_des_eq.m_w_rc;
+	this->m_w_mc = HTR_HP_dP_des_eq.m_w_mc;
+	this->m_w_t = HTR_HP_dP_des_eq.m_w_t;
+	this->m_m_dot_t = HTR_HP_dP_des_eq.m_m_dot_t;
+	this->m_m_dot_rc = HTR_HP_dP_des_eq.m_m_dot_rc;
+	this->m_m_dot_mc = HTR_HP_dP_des_eq.m_m_dot_mc;
+	this->m_m_dot_carryover = HTR_HP_dP_des_eq.m_m_dot_carryover;
+	this->m_Q_dot_LT = HTR_HP_dP_des_eq.m_Q_dot_LT;
+	this->m_Q_dot_HT = HTR_HP_dP_des_eq.m_Q_dot_HT;
+
+	*diff_m_HTR_LP_dP = m_HTR_LP_dP_guess - mpc_rc_cycle->mpc_HTR->get_des_solved()->m_DP_hot_des;
+
+	return 0;
 }
 
 int C_RecompCycle::C_HTR_HP_dP_des::operator()(double m_HTR_HP_dP_guess, double * diff_m_HTR_HP_dP)
@@ -2603,6 +2697,13 @@ void C_RecompCycle::opt_design_core(int & error_code)
 	ms_des_par.m_des_objective_type = ms_opt_des_par.m_des_objective_type;			//[-]
 	ms_des_par.m_des_HX_allocation_type = ms_opt_des_par.m_des_HX_allocation_type;	//[-]
 	ms_des_par.m_HTR_tech_type = ms_opt_des_par.m_HTR_tech_type;					//[-]
+	ms_des_par.m_HTR_target_2 = ms_opt_des_par.m_HTR_target_2;						//[-]
+	ms_des_par.m_HTR_target_2_value = ms_opt_des_par.m_HTR_target_2_value;			//[-]
+	ms_des_par.m_HTR_operation_mode = ms_opt_des_par.m_HTR_operation_mode;			//[-]
+	ms_des_par.m_HTR_P_0 = ms_opt_des_par.m_HTR_P_0;								//[s]
+	ms_des_par.m_HTR_D_s = ms_opt_des_par.m_HTR_D_s;								//[m]
+	ms_des_par.m_HTR_e_v = ms_opt_des_par.m_HTR_e_v;								//[-]
+	ms_des_par.m_HTR_Q_dot_loss = ms_opt_des_par.m_HTR_Q_dot_loss;					//[kW]
 
 	ms_des_par.m_min_phx_deltaT = ms_opt_des_par.m_min_phx_deltaT;			//[C]
 
@@ -2630,6 +2731,8 @@ void C_RecompCycle::opt_design_core(int & error_code)
 		index++;
 	}
 
+	ms_opt_des_par.m_fixed_PR_mc = true;
+	ms_opt_des_par.m_PR_mc_guess = 25000 / 7600.0;
 	if( !ms_opt_des_par.m_fixed_PR_mc )
 	{
 		x.push_back(ms_opt_des_par.m_PR_mc_guess);
@@ -2644,18 +2747,37 @@ void C_RecompCycle::opt_design_core(int & error_code)
 	if( !ms_opt_des_par.m_fixed_recomp_frac )
 	{
 		x.push_back(ms_opt_des_par.m_recomp_frac_guess);
-		lb.push_back(0.0);
-		ub.push_back(1.0);
+		/*lb.push_back(0.0);
+		ub.push_back(1.0);*/
+		lb.push_back(0.2);
+		ub.push_back(0.45);
 		scale.push_back(0.05);
 
 		index++;
 	}
 
+	/*if (ms_opt_des_par.m_HTR_tech_type == 2) {
+		x.push_back(45);
+		lb.push_back(15);
+		ub.push_back(300);
+		scale.push_back(5);
+
+		index++;
+	}*/
+
 	if( !ms_opt_des_par.m_fixed_LT_frac )
 	{
-		x.push_back(ms_opt_des_par.m_LT_frac_guess);
-		lb.push_back(0.0);
-		ub.push_back(1.0);
+		if (ms_opt_des_par.m_des_HX_allocation_type == 1 && ms_opt_des_par.m_HTR_tech_type == 2) {
+			x.push_back(1 - 750000 / ms_opt_des_par.m_UA_rec_total);
+			lb.push_back(1 - 1800000 / ms_opt_des_par.m_UA_rec_total);
+			ub.push_back(1 - 650000 / ms_opt_des_par.m_UA_rec_total);
+		}
+		else {
+			x.push_back(ms_opt_des_par.m_LT_frac_guess);
+			lb.push_back(0.0);
+			ub.push_back(1.0);
+		}
+		
 		scale.push_back(0.05);
 
 		index++;
@@ -2674,9 +2796,6 @@ void C_RecompCycle::opt_design_core(int & error_code)
 		opt_des_cycle.set_upper_bounds(ub);
 		opt_des_cycle.set_initial_step(scale);
 		opt_des_cycle.set_xtol_rel(ms_opt_des_par.m_opt_tol);
-
-		//opt_des_cycle.add_inequality_constraint(nlopt_HTR_eff_ineq, this);
-		//opt_des_cycle.add_inequality_constraint(nlopt_LTR_eff_ineq, this);
 
 		// Set max objective function
 		opt_des_cycle.set_max_objective(nlopt_cb_opt_des, this);		// Calls wrapper/callback that calls 'design_point_eta', which optimizes design point eta through repeated calls to 'design'
@@ -2851,6 +2970,14 @@ void C_RecompCycle::auto_opt_design_core(int & error_code)
 	ms_opt_des_par.m_des_objective_type = ms_auto_opt_des_par.m_des_objective_type;			//[-]
 	ms_opt_des_par.m_des_HX_allocation_type = ms_auto_opt_des_par.m_des_HX_allocation_type;	//[-]
 	ms_opt_des_par.m_HTR_tech_type = ms_auto_opt_des_par.m_HTR_tech_type;					//[-]
+	ms_opt_des_par.m_HTR_target_2 = ms_auto_opt_des_par.m_HTR_target_2;						//[-]
+	ms_opt_des_par.m_HTR_target_2_value = ms_auto_opt_des_par.m_HTR_target_2_value;		    //[-]
+	ms_opt_des_par.m_HTR_operation_mode = ms_auto_opt_des_par.m_HTR_operation_mode;			//[-]
+	ms_opt_des_par.m_HTR_P_0 = ms_auto_opt_des_par.m_HTR_P_0;								//[s]
+	ms_opt_des_par.m_HTR_D_s = ms_auto_opt_des_par.m_HTR_D_s;								//[m]
+	ms_opt_des_par.m_HTR_e_v = ms_auto_opt_des_par.m_HTR_e_v;								//[-]
+	ms_opt_des_par.m_HTR_Q_dot_loss = ms_auto_opt_des_par.m_HTR_Q_dot_loss;					//[kW]
+
 	ms_opt_des_par.m_min_phx_deltaT = ms_auto_opt_des_par.m_min_phx_deltaT;			//[C]
 
 	// Outer optimization loop
@@ -2885,7 +3012,12 @@ void C_RecompCycle::auto_opt_design_core(int & error_code)
 		
 		//ms_opt_des_par.m_PR_mc_guess = PR_mc_guess;
 		//ms_opt_des_par.m_fixed_PR_mc = false;
+
 		ms_opt_des_par.m_fixed_PR_mc = ms_auto_opt_des_par.m_fixed_PR_mc;	//[-]
+
+		ms_opt_des_par.m_fixed_PR_mc = true;
+		PR_mc_guess = 25000 / 7600.0;
+		ms_auto_opt_des_par.m_PR_mc_guess = 25000 / 7600.0;
 		if (ms_opt_des_par.m_fixed_PR_mc)
 		{
 			ms_opt_des_par.m_PR_mc_guess = ms_auto_opt_des_par.m_PR_mc_guess;	//[-]
@@ -2898,7 +3030,10 @@ void C_RecompCycle::auto_opt_design_core(int & error_code)
 		ms_opt_des_par.m_recomp_frac_guess = 0.3;
 		ms_opt_des_par.m_fixed_recomp_frac = false;
 		ms_opt_des_par.m_LT_frac_guess = 0.5;
-		if (ms_opt_des_par.m_des_HX_allocation_type == 1) {
+		if (ms_des_par.m_HTR_target_2 == 1 && ms_opt_des_par.m_HTR_tech_type == 2) {
+			ms_opt_des_par.m_LT_frac_guess = 1 - 5000 / ms_opt_des_par.m_UA_rec_total;
+		}
+		if (ms_opt_des_par.m_des_HX_allocation_type == 1 && ms_opt_des_par.m_HTR_tech_type == 2) {
 			ms_opt_des_par.m_LT_frac_guess = 1 - 600000 / ms_opt_des_par.m_UA_rec_total;
 		}
 		ms_opt_des_par.m_fixed_LT_frac = false;
@@ -3468,6 +3603,15 @@ void C_RecompCycle::finalize_design(int & error_code)
 		", " + std::to_string(ms_des_solved.m_recomp_frac) +
 		", " + std::to_string(m_m_dot_t) +
 		", " + std::to_string(ms_des_par.m_UA_HT) +
+
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_DP_cold_des) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_DP_hot_des) +
+		", " + std::to_string(ms_des_par.m_HTR_P_0) +
+		", " + std::to_string(ms_des_par.m_HTR_D_s) +
+		", " + std::to_string(ms_des_par.m_HTR_target_2) +
+		", " + std::to_string(ms_des_par.m_HTR_target_2_value) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_HTR_AR) +
+
 		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_aUA_design_total) +
 		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_cost_design_total) +
 		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_eff_design) +

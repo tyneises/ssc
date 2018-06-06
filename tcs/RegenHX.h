@@ -40,6 +40,14 @@ private:
 	double m_dot_carryover;
 	double m_HTR_LP_dP, m_HTR_HP_dP;
 
+	targetModes::targetModes target_1;
+	targetModes::target2Modes target_2;
+	double target_2_value;
+	double P_0;
+	double D_s;
+	double Q_dot_loss;
+	double e_v;
+
 	/*! \brief Number of (hot module + cold module) sets in heat exchanger. [-]
 		
 		Heat exchanger needs two modules. One for the hot flow and one for cold flow.
@@ -64,21 +72,19 @@ private:
 
 	void resetDesignStructure();
 
-public:
-
 	/*!	\brief Sets fluid states for hot and cold inlets
 		
 		Mass flows adjusted, depending on operationMode.
 		setParameters() prior to calling this method!
 		\param T_H_in Temperature of fluid at hot inlet in [K]
-		\param P_H Pressure of fluid at hot inlet in [kPa]
+		\param P_H_in Pressure of fluid at hot inlet in [kPa]
 		\param m_dot_H Mass flow rate of hot stream in [kg/s]
 		\param T_C_in Temperature of fluid at cold inlet in [K]
 		\param P_C Pressure of fluid at cold inlet in [kPa]
 		\param m_dot_C Mass flow rate of cold stream in [kg/s]
 		\sa setParameters(), setDesignTargets()
 	*/
-	void setInletStates(double T_H_in, double P_H, double m_dot_H, double T_C_in, double P_C, double m_dot_C);
+	void setInletStates(double T_H_in, double P_H_in, double m_dot_H, double T_C_in, double P_C, double m_dot_C);
 
 	/*!	\brief Sets flow and regenerator parameters
 	
@@ -89,7 +95,7 @@ public:
 		\param e_v Porosity or ratio of empty space inside of the heat exchanger to its total volume
 		\sa setInletState(), setDesignTargets()
 	*/
-	void setParameters(operationModes::operationModes operationMode, double Q_dot_loss, double P_0, double D_s, double e_v);
+	void setParameters(operationModes::operationModes operationMod, double Q_dot_loss, double P_0, double D_s, double e_v);
 
 	/*!	\brief Sets design parameters.
 	
@@ -99,10 +105,11 @@ public:
 		\param dP_max Target maximum pressure drop in the system in [kPa]
 		\sa setParameters(), setInletState()
 	*/
-	void setDesignTargets(targetModes::targetModes targetMode, double targetParameter, double dP_max);
+	void setDesignTargets(targetModes::targetModes targetMode, targetModes::target2Modes secondTargetMode, double targetParameter, double secondTargetParameter);
 
 	void setValves(valve* valves);
 
+public:
 	/*!	\brief Solves the model so that it meets design parameters.
 	*
 	*	Method runs initialize() method and then figureOutL() which is a higher iteration loop, which causes
@@ -114,9 +121,11 @@ public:
 	*
 	*	\sa setDesignTargets(), figureOutL(), figureOutD_fr(), BalancedPCs(), BalancedPHs(), BalanceQdotAs(), CalculateThermoAndPhysicalModels()
 	*/
-	int solveSystem();
+	int getDesignSolution();
+
+	void set_params(int target_1, int target_2, int operation_mode, double target_2_value, double P_0, double D_s, double e_v, double Q_dot_loss);
 	
-	int solveSystem(double* results);
+	int getDesignSolution(double* results);
 
 	C_HX_counterflow::S_des_solved ms_des_solved;
 	C_HX_counterflow::S_od_solved ms_od_solved;

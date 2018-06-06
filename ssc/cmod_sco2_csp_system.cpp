@@ -76,6 +76,13 @@ static var_info _cm_vtab_sco2_csp_system[] = {
 	{ SSC_INPUT,  SSC_NUMBER,  "des_objective",        "[2] = hit min phx deltat then max eta, [else] max eta",  "",           "",    "",      "?=0",   "",       "" },
 	{ SSC_INPUT,  SSC_NUMBER,  "des_HX_allocation",    "[0] = hit total UA (kW/K), [1] hit total Cost ($)",		 "",           "",    "",      "?=0",   "",       "" },
 	{ SSC_INPUT,  SSC_NUMBER,  "HTR_tech_type",        "[1] = Counterflow PCHE, [2] Regenerator",				 "",           "",    "",      "?=1",   "",       "" },
+	{ SSC_INPUT,  SSC_NUMBER,  "HTR_target_2",		   "[0] = Maximum Pressure Drop [kPa], [1] Aspect Ratio (L/D) [-]. Regenerator only", "", "", "", "?=0", "",  "" },
+	{ SSC_INPUT,  SSC_NUMBER,  "HTR_target_2_value",   "Maximum Pressure Drop [kPa] or Aspect Ratio (L/D) [-]. Regenerator only.", "", "", "", "?=216", "",		  "" },
+	{ SSC_INPUT,  SSC_NUMBER,  "HTR_operation_mode",   "[0] = Parallel, [1] Redundant. Regenerator only",		 "",           "",    "",      "?=0",   "",       "" },
+	{ SSC_INPUT,  SSC_NUMBER,  "HTR_P_0",			   "Bed switching time. Regenerator only.",				     "s",          "",    "",      "?=45",  "",       "" },
+	{ SSC_INPUT,  SSC_NUMBER,  "HTR_D_s",              "Bed sphere diameter. Regenerator only.",			     "m",          "",    "",      "?=0.003", "",     "" },
+	{ SSC_INPUT,  SSC_NUMBER,  "HTR_e_v",              "Free volume fraction. Regenerator only.",			     "",           "",    "",      "?=0.37", "",      "" },
+	{ SSC_INPUT,  SSC_NUMBER,  "HTR_Q_dot_loss",       "Estimated heat transfer losses. Regenerator only.",      "kW",         "",    "",      "?=100", "",       "" },
 	{ SSC_INPUT,  SSC_NUMBER,  "min_phx_deltaT",       "Minimum design temperature difference across PHX",       "C",          "",    "",      "?=0",   "",       "" },	
 	// Cycle Design
 	{ SSC_INPUT,  SSC_NUMBER,  "eta_isen_mc",          "Design main compressor isentropic efficiency",           "-",          "",    "",      "*",     "",       "" },
@@ -360,6 +367,13 @@ public:
 			// Remaining cycle design parameters
 		sco2_rc_des_par.m_des_HX_allocation_type = as_double("des_HX_allocation");
 		sco2_rc_des_par.m_HTR_tech_type = as_double("HTR_tech_type");
+		sco2_rc_des_par.m_HTR_target_2 = as_double("HTR_target_2");
+		sco2_rc_des_par.m_HTR_target_2_value = as_double("HTR_target_2_value");
+		sco2_rc_des_par.m_HTR_operation_mode = as_double("HTR_operation_mode");
+		sco2_rc_des_par.m_HTR_P_0 = as_double("HTR_P_0");
+		sco2_rc_des_par.m_HTR_D_s = as_double("HTR_D_s");
+		sco2_rc_des_par.m_HTR_e_v = as_double("HTR_e_v");
+		sco2_rc_des_par.m_HTR_Q_dot_loss = as_double("HTR_Q_dot_loss");
 		sco2_rc_des_par.m_LT_eff_max = as_double("LT_recup_eff_max");
 		sco2_rc_des_par.m_HT_eff_max = as_double("HT_recup_eff_max");
 		sco2_rc_des_par.m_eta_mc = as_double("eta_isen_mc");
