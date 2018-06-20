@@ -417,7 +417,7 @@ public:
 		{
 			p_sco2_recomp_csp->design(sco2_rc_des_par);
 		}
-		catch( C_csp_exception &csp_exception )
+		catch(...)//C_csp_exception &csp_exception )
 		{
 			// Report warning before exiting with error
 			while (p_sco2_recomp_csp->mc_messages.get_message(&out_type, &out_msg))
@@ -426,7 +426,7 @@ public:
 				log("\n");
 			}
 
-			throw exec_error("sco2_csp_system", csp_exception.m_error_message);
+			throw exec_error("sco2_csp_system", "error");//csp_exception.m_error_message);
 		}
 
 		// If all calls were successful, log to SSC any messages from sco2_recomp_csp

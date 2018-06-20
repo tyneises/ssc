@@ -144,7 +144,7 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 	
 	double dP_max_total;
 	if (secondTargetMode == targetModes::dP_max) {
-		dP_max_total = max(P_h_in - P_h_out, P_c_in - P_c_out);
+		dP_max_total = max(P_h_in - P_h_out, P_c_in - P_c_out) / f_dP;
 	}
 	else if (secondTargetMode == targetModes::AR) {
 		dP_max_total = target_2_value;
@@ -216,8 +216,8 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 	T_c_out = T_C_out;
 	T_h_out = T_H_out;
 
-	ms_des_solved.m_DP_cold_des = m_HTR_HP_dP;
-	ms_des_solved.m_DP_hot_des = m_HTR_LP_dP;
+	ms_des_solved.m_DP_cold_des = m_HTR_HP_dP * f_dP;
+	ms_des_solved.m_DP_hot_des = m_HTR_LP_dP * f_dP;
 	ms_des_solved.m_eff_design = epsilon;
 	ms_des_solved.m_min_DT_design = min((T_H_in - T_H_out), (T_C_out - T_C_in));
 	ms_des_solved.m_NTU_design = NTU_R_e;

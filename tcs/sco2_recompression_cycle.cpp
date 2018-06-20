@@ -1861,19 +1861,19 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	ms_des_par.m_UA_LT = 6948000;
 	ms_des_par.m_UA_HT = 682621;*/
 	
-	ms_des_par.m_DP_LT[0] = 175;
-	ms_des_par.m_DP_LT[1] = 175;
+	ms_des_par.m_DP_LT[0] = 187.5;
+	ms_des_par.m_DP_LT[1] = 187.5;
 	
 	if (ms_des_par.m_HTR_target_2 == targetModes::dP_max) {
 		ms_des_par.m_DP_HT[1] = ms_des_par.m_HTR_target_2_value;
 	}
 	else {
-		ms_des_par.m_DP_HT[1] = 216;
+		ms_des_par.m_DP_HT[1] = 280;
 	}
 	
 	if (ms_des_par.m_HTR_tech_type == 1) {
-		ms_des_par.m_DP_HT[0] = 175;
-		ms_des_par.m_DP_HT[1] = 175;
+		ms_des_par.m_DP_HT[0] = 187.5;
+		ms_des_par.m_DP_HT[1] = 187.5;
 	}
 
 	if( ms_des_par.m_recomp_frac < 0.01 )
@@ -2744,6 +2744,8 @@ void C_RecompCycle::opt_design_core(int & error_code)
 		index++;
 	}
 
+	ms_opt_des_par.m_fixed_recomp_frac = false;
+	ms_opt_des_par.m_recomp_frac_guess = 0.38;
 	if( !ms_opt_des_par.m_fixed_recomp_frac )
 	{
 		x.push_back(ms_opt_des_par.m_recomp_frac_guess);
@@ -3027,8 +3029,9 @@ void C_RecompCycle::auto_opt_design_core(int & error_code)
 			ms_opt_des_par.m_PR_mc_guess = PR_mc_guess;		//[-]
 		}
 		//0.3
-		ms_opt_des_par.m_recomp_frac_guess = 0.3;
+		ms_opt_des_par.m_recomp_frac_guess = 0.38;
 		ms_opt_des_par.m_fixed_recomp_frac = false;
+
 		ms_opt_des_par.m_LT_frac_guess = 0.5;
 		if (ms_des_par.m_HTR_target_2 == 1 && ms_opt_des_par.m_HTR_tech_type == 2) {
 			ms_opt_des_par.m_LT_frac_guess = 1 - 5000 / ms_opt_des_par.m_UA_rec_total;
@@ -3427,7 +3430,7 @@ double C_RecompCycle::opt_eta_fixed_P_high(double P_high_opt /*kPa*/)
 			ms_opt_des_par.m_PR_mc_guess = PR_mc_guess;		//[-]
 		}
 
-		ms_opt_des_par.m_recomp_frac_guess = 0.3;
+		ms_opt_des_par.m_recomp_frac_guess = 0.38;
 		ms_opt_des_par.m_fixed_recomp_frac = false;
 		ms_opt_des_par.m_LT_frac_guess = 0.5;
 		ms_opt_des_par.m_fixed_LT_frac = false;
@@ -3462,7 +3465,7 @@ double C_RecompCycle::opt_eta_fixed_P_high(double P_high_opt /*kPa*/)
 	}
 
 	ms_opt_des_par.m_recomp_frac_guess = 0.0;
-	ms_opt_des_par.m_fixed_recomp_frac = true;
+	ms_opt_des_par.m_fixed_recomp_frac = false;
 	ms_opt_des_par.m_LT_frac_guess = 1.0;
 	ms_opt_des_par.m_fixed_LT_frac = true;
 
@@ -3587,7 +3590,7 @@ void C_RecompCycle::finalize_design(int & error_code)
 	ms_des_solved.m_m_dot_mc = m_m_dot_mc;
 	ms_des_solved.m_m_dot_rc = m_m_dot_rc;
 	ms_des_solved.m_m_dot_t = m_m_dot_t;
-	ms_des_solved.m_recomp_frac = m_m_dot_rc / m_m_dot_t;
+	ms_des_solved.m_recomp_frac = m_m_dot_rc / (m_m_dot_t + m_m_dot_carryover);
 
 	ms_des_solved.m_UA_LTR = ms_des_par.m_UA_LT;
 	ms_des_solved.m_UA_HTR = ms_des_par.m_UA_HT;

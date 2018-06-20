@@ -48,6 +48,8 @@ private:
 	double Q_dot_loss;
 	double e_v;
 
+	double f_dP = 1.2;
+
 	/*! \brief Number of (hot module + cold module) sets in heat exchanger. [-]
 		
 		Heat exchanger needs two modules. One for the hot flow and one for cold flow.
