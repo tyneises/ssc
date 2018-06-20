@@ -109,8 +109,6 @@ private:
 	*/
 	void setDesignTargets(targetModes::targetModes targetMode, targetModes::target2Modes secondTargetMode, double targetParameter, double secondTargetParameter);
 
-	void setValves(valve* valves);
-
 public:
 	/*!	\brief Solves the model so that it meets design parameters.
 	*

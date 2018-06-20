@@ -10,6 +10,6 @@ var("parameters.P_0", 45);
 var("parameters.D_s", 0.003);
 var("parameters.e_v", 0.37);
 
-var("targets.targetdP_max", 216);
+var("targets.targetdP_max", 280);
 var("targets.targetCost", 162000);
 run("regenhx");
