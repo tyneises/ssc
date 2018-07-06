@@ -1009,7 +1009,7 @@ double C_HX_counterflow::calc_max_q_dot_enth(double h_h_in /*kJ/kg*/, double P_h
 }
 
 void C_HX_counterflow::design_calc_UA(C_HX_counterflow::S_des_calc_UA_par des_par,
-	double q_dot_design /*kWt*/, C_HX_counterflow::S_des_solved &des_solved)
+	double q_dot_design /*kWt*/)
 {
 	/*Designs heat exchanger given its mass flow rates, inlet temperatures, and a heat transfer rate.
 	Note: the heat transfer rate must be positive.*/
@@ -1056,13 +1056,13 @@ void C_HX_counterflow::design_calc_UA(C_HX_counterflow::S_des_calc_UA_par des_pa
 	// Specify that method solved successfully
 	m_is_HX_designed = true;
 
-	des_solved = ms_des_solved;
+	//*des_solved = ms_des_solved;
 
 	return;
 }
 
 void C_HX_co2_to_htf::design_and_calc_m_dot_htf(C_HX_counterflow::S_des_calc_UA_par &des_par, 
-			double q_dot_design /*kWt*/, double dt_cold_approach /*C/K*/, C_HX_counterflow::S_des_solved &des_solved)
+			double q_dot_design /*kWt*/, double dt_cold_approach /*C/K*/)
 {
 	double T_htf_cold = des_par.m_T_c_in + dt_cold_approach;	//[C]
 
@@ -1071,7 +1071,8 @@ void C_HX_co2_to_htf::design_and_calc_m_dot_htf(C_HX_counterflow::S_des_calc_UA_
 
 	des_par.m_m_dot_hot_des = q_dot_design/(h_h_in - h_c_in);
 
-	design_calc_UA(des_par, q_dot_design, des_solved);
+	//design_calc_UA(des_par, q_dot_design, des_solved);
+	design_calc_UA(des_par, q_dot_design);
 }
 
 void C_HX_counterflow::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, double eff_limit /*-*/, double T_c_in /*K*/, double P_c_in /*kPa*/, double m_dot_c /*kg/s*/, double P_c_out /*kPa*/,

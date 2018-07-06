@@ -238,15 +238,23 @@ public:
 		double m_T_c_out;				//[K] Design-point cold outlet temperature
 		double m_DP_cold_des;			//[kPa] cold fluid design pressure drop
 		double m_DP_hot_des;			//[kPa] hot fluid design pressure drop
+
 		double m_m_dot_carryover;			//[kg/s] Carryover massflow. Only applicable to regenerator
 		double m_HTR_AR;					//[-] Regenerator aspect ratio
+		double m_HTR_D_fr;					//[m] Regenerator diameter
+		double m_HTR_L;						//[m] Regenerator length
+		double m_HTR_valve_HTHP_cv;
+		double m_HTR_valve_LTHP_cv;
+		double m_HTR_valve_HTLP_cv;
+		double m_HTR_valve_LTLP_cv;
 		bool m_eff_limited;				//Flag that is raised if HX performance is limited by maximum allowed effectiveness
 
 		S_des_solved()
 		{
 			m_Q_dot_design = m_UA_design_total = m_aUA_design_total = m_cost_design_total = m_min_DT_design = m_eff_design = 
 				m_NTU_design = m_T_h_out = m_T_c_out =
-				m_DP_cold_des = m_DP_hot_des = m_m_dot_carryover = std::numeric_limits<double>::quiet_NaN();
+				m_DP_cold_des = m_DP_hot_des = m_m_dot_carryover = m_HTR_D_fr = m_HTR_L = m_HTR_valve_HTHP_cv
+				= m_HTR_valve_LTHP_cv = m_HTR_valve_HTLP_cv = m_HTR_valve_LTLP_cv = std::numeric_limits<double>::quiet_NaN();
 			m_eff_limited = false;
 			m_HTR_AR = -1;
 		}
@@ -302,8 +310,9 @@ public:
 	C_HX_counterflow();
 	~C_HX_counterflow();
 
-	void design_calc_UA(C_HX_counterflow::S_des_calc_UA_par des_par, 
-		double q_dot_design /*kWt*/, C_HX_counterflow::S_des_solved &des_solved);
+	//void design_calc_UA(C_HX_counterflow::S_des_calc_UA_par des_par, 
+	//	double q_dot_design /*kWt*/, C_HX_counterflow::S_des_solved &des_solved);
+	void design_calc_UA(C_HX_counterflow::S_des_calc_UA_par des_par, double q_dot_design /*kWt*/);
 
 	double calc_max_q_dot_enth(double h_h_in /*kJ/kg*/, double P_h_in /*kPa*/, double P_h_out /*kPa*/, double m_dot_h /*kg/s*/,
 		double h_c_in /*kJ/kg*/, double P_c_in /*kPa*/, double P_c_out /*kPa*/, double m_dot_c /*kg/s*/);
@@ -367,8 +376,10 @@ public:
 	//void design_with_m_dot(C_HX_counterflow::S_des_par &des_par, double T_htf_cold, C_HX_counterflow::S_des_solved &des_solved);
 
 	// This method calculates the required HTF mass flow rate (m_m_dot_hot_des) given a cold side approach temperature (assuming hot HTF temp is a design parameter)
-	void design_and_calc_m_dot_htf(C_HX_counterflow::S_des_calc_UA_par &des_par, 
-		double q_dot_design /*kWt*/, double dt_cold_approach /*C/K*/, C_HX_counterflow::S_des_solved &des_solved);
+	//void design_and_calc_m_dot_htf(C_HX_counterflow::S_des_calc_UA_par &des_par, 
+	//	double q_dot_design /*kWt*/, double dt_cold_approach /*C/K*/, C_HX_counterflow::S_des_solved *des_solved);
+	void design_and_calc_m_dot_htf(C_HX_counterflow::S_des_calc_UA_par &des_par,
+		double q_dot_design /*kWt*/, double dt_cold_approach /*C/K*/);
 
 	virtual void initialize(int hot_fl, util::matrix_t<double> hot_fl_props);
 

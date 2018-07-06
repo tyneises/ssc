@@ -288,6 +288,15 @@ void C_sco2_recomp_csp::design_core()
 
 			s_rc_auto_opt_des_par.m_is_recomp_ok = ms_des_par.m_is_recomp_ok;
 
+			mpc_sco2_cycle->ms_des_par_Dmitrii.mc_hot_fl_props.copy(ms_des_par.mc_hot_fl_props);
+			mpc_sco2_cycle->ms_des_par_Dmitrii.m_deltaP_cooler_frac = ms_des_par.m_deltaP_cooler_frac;
+			mpc_sco2_cycle->ms_des_par_Dmitrii.m_elevation = ms_des_par.m_elevation;
+			mpc_sco2_cycle->ms_des_par_Dmitrii.m_frac_fan_power = ms_des_par.m_frac_fan_power;
+			mpc_sco2_cycle->ms_des_par_Dmitrii.m_hot_fl_code = ms_des_par.m_hot_fl_code;
+			mpc_sco2_cycle->ms_des_par_Dmitrii.m_phx_dt_cold_approach = ms_des_par.m_phx_dt_cold_approach;
+			mpc_sco2_cycle->ms_des_par_Dmitrii.m_T_amb_des = ms_des_par.m_T_amb_des;
+			mpc_sco2_cycle->ms_des_par_Dmitrii.m_T_htf_hot_in = ms_des_par.m_T_htf_hot_in;
+
 			auto_err_code = mpc_sco2_cycle->auto_opt_design(s_rc_auto_opt_des_par);
 		}
 		else
@@ -341,8 +350,9 @@ void C_sco2_recomp_csp::design_core()
 	ms_phx_des_par.m_m_dot_hot_des = std::numeric_limits<double>::quiet_NaN();
 		// Set maximum effectiveness
 	ms_phx_des_par.m_eff_max = 1.0;
-	
-	mc_phx.design_and_calc_m_dot_htf(ms_phx_des_par, q_dot_des_phx, ms_des_par.m_phx_dt_cold_approach, ms_des_solved.ms_phx_des_solved);
+
+	mc_phx.design_and_calc_m_dot_htf(ms_phx_des_par, q_dot_des_phx, ms_des_par.m_phx_dt_cold_approach);
+	ms_des_solved.ms_phx_des_solved = mc_phx.ms_des_solved;
 
 	// Design the air cooler
 		// Define Independent Air Cooler Design Parameters

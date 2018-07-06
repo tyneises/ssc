@@ -38,6 +38,10 @@ int RegenHX::getDesignSolution()
 	m_dot_carryover = solution.m_dot_carryover;
 	m_HTR_LP_dP = solution.m_HTR_LP_dP;
 	m_HTR_HP_dP = solution.m_HTR_HP_dP;
+	
+	for (int i = 0; i < 4; i++) {
+		valves[i] = solution.valves[i];
+	}
 
 	if (operationMode == operationModes::PARALLEL) {
 		costHX *= modulesInParallel;
@@ -142,22 +146,23 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 
 	//High Pressure Low Temperature. T_c_in
 	valves[0].cost = 36000;
-	valves[0].cv = 950;
+	//valves[0].cv = 950;
 	valves[0].dP = 8.6;
 	//High Pressure High Temperature. T_c_out
 	valves[1].cost = 74000;
-	valves[1].cv = 1100;
+	//valves[1].cv = 1100;
 	valves[1].dP = 13;
 	//Low Pressure High Temperature. T_h_in
 	valves[2].cost = 101000;
-	valves[2].cv = 1750;
+	//valves[2].cv = 1750;
 	valves[2].dP = 16;
 	//Low Pressure Low Temperature. T_h_out
 	valves[3].cost = 36000;
-	valves[3].cv = 950;
+	//valves[3].cv = 950;
 	valves[3].dP = 29.6;
 
 	costValves = 474000;
+	regenModel->setValves(valves);
 
 	targetModes::target2Modes secondTargetMode = target_2;
 	
@@ -180,7 +185,7 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 		setDesignTargets(targetModes::COST, secondTargetMode, targetValue - costValves, dP_max_Regen);
 	}
 	else if (targetType == 2) {
-		setDesignTargets(targetModes::EFF, secondTargetMode, eff_limit, dP_max_Regen);
+		setDesignTargets(targetModes::EFF, secondTargetMode, targetValue, dP_max_Regen);
 	}
 
 	int status = getDesignSolution();
@@ -195,7 +200,7 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 		ms_des_solved.m_eff_limited = true;
 		double oldUA = UA;
 		double oldCostHX = costHX;
-		setParameters(operationMode, P_0, Q_dot_loss, D_s, e_v);
+		setParameters(operationMode, Q_dot_loss, P_0, D_s, e_v);
 		setInletStates(T_h_in, P_h_in - valves[2].dP, m_dot_h, T_c_in, P_c_in - valves[0].dP, m_dot_c);
 		setDesignTargets(targetModes::EFF, secondTargetMode, eff_limit, dP_max_Regen);
 
@@ -224,6 +229,12 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 	ms_des_solved.m_T_c_out = T_C_out;
 	ms_des_solved.m_T_h_out = T_H_out;
 	ms_des_solved.m_HTR_AR = AspectRatio;
+	ms_des_solved.m_HTR_D_fr = D_fr;
+	ms_des_solved.m_HTR_L = L;
+	ms_des_solved.m_HTR_valve_HTHP_cv = valves[1].cv;
+	ms_des_solved.m_HTR_valve_LTHP_cv = valves[0].cv;
+	ms_des_solved.m_HTR_valve_HTLP_cv = valves[2].cv;
+	ms_des_solved.m_HTR_valve_LTLP_cv = valves[3].cv;
 
 	if (targetType == 0 || targetType == 2) {
 		ms_des_solved.m_UA_design_total = UA;

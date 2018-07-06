@@ -1846,6 +1846,83 @@ using namespace std;
 //	
 //}
 
+void C_RecompCycle::calculateLCOE()
+{
+	ms_des_solved.m_cost_per_kW = 1171 + (ms_des_solved.ms_HTR_des_solved.m_cost_design_total
+																+ ms_des_solved.ms_LTR_des_solved.m_cost_design_total) / ms_des_solved.m_W_dot_net;
+	ms_des_solved.m_LCOE = sunshot_LCOE_Table->getValue(ms_des_solved.m_eta_thermal, ms_des_solved.m_cost_per_kW);
+
+	ms_des_solved.m_cost_per_kW_new = (ms_des_solved.m_MC_cost + ms_des_solved.m_RC_cost
+		+ ms_des_solved.m_Turbine_cost + ms_des_solved.m_Precooler_cost + ms_des_solved.m_PHX_cost
+		+ ms_des_solved.ms_HTR_des_solved.m_cost_design_total
+		+ ms_des_solved.ms_LTR_des_solved.m_cost_design_total) / ms_des_solved.m_W_dot_net;
+
+	ms_des_solved.m_LCOE_new = sunshot_LCOE_Table->getValue(ms_des_solved.m_eta_thermal, ms_des_solved.m_cost_per_kW_new);
+}
+
+
+void C_RecompCycle::turbomachineryCost() {
+	ms_des_solved.m_MC_cost = 6898 * pow(fabs(m_W_dot_mc), 0.7865);
+	ms_des_solved.m_RC_cost = 6898 * pow(fabs(m_W_dot_rc), 0.7865);
+	ms_des_solved.m_Turbine_cost = 7790 * pow(fabs(m_W_dot_t), 0.6842);
+
+	design_phx(3.5);
+	design_air_cooler(2.3);
+}
+
+void C_RecompCycle::design_air_cooler(double multiplier){
+	C_CO2_to_air_cooler::S_des_par_cycle_dep ms_air_cooler_des_par_dep;
+	// Set air cooler design parameters that are dependent on the cycle design solution
+	ms_air_cooler_des_par_dep.m_T_hot_in_des = ms_des_solved.m_temp[C_sco2_cycle_core::LTR_LP_OUT];
+	ms_air_cooler_des_par_dep.m_P_hot_in_des = ms_des_solved.m_pres[C_sco2_cycle_core::LTR_LP_OUT];
+	ms_air_cooler_des_par_dep.m_m_dot_total = ms_des_solved.m_m_dot_mc;		//[kg/s]
+																								// This pressure drop is currently uncoupled from the cycle design
+	ms_air_cooler_des_par_dep.m_delta_P_des = ms_des_par_Dmitrii.m_deltaP_cooler_frac*ms_des_solved.m_pres[C_sco2_cycle_core::MC_OUT];
+	ms_air_cooler_des_par_dep.m_T_hot_out_des = ms_des_solved.m_temp[C_sco2_cycle_core::MC_IN];
+	ms_air_cooler_des_par_dep.m_W_dot_fan_des = ms_des_par_Dmitrii.m_frac_fan_power*ms_des_par.m_W_dot_net / 1000.0;		//[MWe]
+
+	C_CO2_to_air_cooler::S_des_par_ind ms_air_cooler_des_par_ind;
+	ms_air_cooler_des_par_ind.m_T_amb_des = ms_des_par_Dmitrii.m_T_amb_des;		//[K]
+	ms_air_cooler_des_par_ind.m_elev = ms_des_par_Dmitrii.m_elevation;			//[m]
+																		// Add checks from Type 424 to the air cooler design code?
+	C_CO2_to_air_cooler mc_air_cooler;
+	mc_air_cooler.design_hx(ms_air_cooler_des_par_ind, ms_air_cooler_des_par_dep);
+
+	double air_cooler_UA = mc_air_cooler.get_design_solved()->m_UA_total / 1000.0;
+	ms_des_solved.m_Precooler_cost = multiplier * Precooler_Cost_Table->getValue("Price($-K/kW)", "UA(kW/K)", air_cooler_UA) * air_cooler_UA;
+}
+
+void C_RecompCycle::design_phx(double multiplier) {
+
+	C_HX_co2_to_htf mc_phx;
+	C_HX_counterflow::S_des_calc_UA_par ms_phx_des_par;
+	C_HX_counterflow::S_des_solved ms_phx_des_solved;
+	// Initialize the PHX
+	mc_phx.initialize(ms_des_par_Dmitrii.m_hot_fl_code, ms_des_par_Dmitrii.mc_hot_fl_props);
+
+	// Design the PHX
+	double q_dot_des_phx = ms_des_solved.m_W_dot_net / ms_des_solved.m_eta_thermal;
+	//ms_phx_des_par.m_Q_dot_design = ms_des_solved.ms_rc_cycle_solved.m_W_dot_net / ms_des_solved.ms_rc_cycle_solved.m_eta_thermal;		//[kWt]
+	ms_phx_des_par.m_T_h_in = ms_des_par_Dmitrii.m_T_htf_hot_in;	//[K] HTF hot inlet temperature 
+															// Okay, but CO2-HTF HX is assumed here. How does "structure inheritance" work?
+	ms_phx_des_par.m_P_h_in = 1.0;							// Assuming HTF is incompressible...
+	ms_phx_des_par.m_P_h_out = 1.0;						// Assuming HTF is incompressible...
+														// .................................................................................
+	ms_phx_des_par.m_T_c_in = ms_des_solved.m_temp[C_sco2_cycle_core::HTR_HP_OUT];		//[K]
+	ms_phx_des_par.m_P_c_in = ms_des_solved.m_pres[C_sco2_cycle_core::HTR_HP_OUT];		//[K]
+	ms_phx_des_par.m_P_c_out = ms_des_solved.m_pres[C_sco2_cycle_core::TURB_IN];		//[K]
+	ms_phx_des_par.m_m_dot_cold_des = ms_des_solved.m_m_dot_t;	//[kg/s]
+																					// Calculating the HTF mass flow rate in 'design_and_calc_m_dot_htf'
+	ms_phx_des_par.m_m_dot_hot_des = std::numeric_limits<double>::quiet_NaN();
+	// Set maximum effectiveness
+	ms_phx_des_par.m_eff_max = 1.0;
+
+	mc_phx.design_and_calc_m_dot_htf(ms_phx_des_par, q_dot_des_phx, ms_des_par_Dmitrii.m_phx_dt_cold_approach);
+	double phx_UA = mc_phx.ms_des_solved.m_UA_design_total;
+
+	ms_des_solved.m_PHX_cost = multiplier * PHX_Cost_Table->getValue("Price($-K/kW)", "UA(kW/K)", phx_UA) * phx_UA;
+}
+
 void C_RecompCycle::design_core_standard(int & error_code)
 {
 	// twn 1.4.17: put reasonable lower bound on *modeled* recompression fraction
@@ -1868,7 +1945,7 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		ms_des_par.m_DP_HT[1] = ms_des_par.m_HTR_target_2_value;
 	}
 	else {
-		ms_des_par.m_DP_HT[1] = 280;
+		ms_des_par.m_DP_HT[1] = 216;
 	}
 	
 	if (ms_des_par.m_HTR_tech_type == 1) {
@@ -1984,8 +2061,6 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	m_m_dot_carryover = HTR_LP_dP_des_eq.m_m_dot_carryover;
 	Q_dot_LT = HTR_LP_dP_des_eq.m_Q_dot_LT;
 	Q_dot_HT = HTR_LP_dP_des_eq.m_Q_dot_HT;
-	//ms_des_solved.ms_LTR_des_solved = mc_LT_recup.ms_des_solved;
-	//ms_des_solved.ms_HTR_des_solved = *mpc_HTR->get_des_solved();
 
 	// State 5 can now be fully defined
 	m_enth_last[HTR_HP_OUT] = m_enth_last[MIXER_OUT] + Q_dot_HT / m_dot_t;						// Energy balance on cold stream of high-temp recuperator
@@ -2007,7 +2082,7 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	PHX_des_par.m_m_dot_design[1] = 0.0;
 	PHX_des_par.m_Q_dot_design = m_dot_t*(m_enth_last[TURB_IN] - m_enth_last[HTR_HP_OUT]);
 	m_PHX.initialize(PHX_des_par);
-
+	
 	C_HeatExchanger::S_design_parameters PC_des_par;
 	PC_des_par.m_DP_design[0] = 0.0;
 	PC_des_par.m_DP_design[1] = m_pres_last[LTR_LP_OUT] - m_pres_last[MC_IN];
@@ -2035,6 +2110,8 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		m_objective_metric_last = m_eta_thermal_calc_last;
 	}
 
+	ms_des_solved.ms_LTR_des_solved = mc_LT_recup.ms_des_solved;
+	ms_des_solved.ms_HTR_des_solved = *mpc_HTR->get_des_solved();
 	//spdlog::get("logger")->error("Cycle Eff = " + std::to_string(m_eta_thermal_calc_last));
 
 	m_m_dot_mc = m_dot_mc;
@@ -2770,9 +2847,9 @@ void C_RecompCycle::opt_design_core(int & error_code)
 	if( !ms_opt_des_par.m_fixed_LT_frac )
 	{
 		if (ms_opt_des_par.m_des_HX_allocation_type == 1 && ms_opt_des_par.m_HTR_tech_type == 2) {
-			x.push_back(1 - 750000 / ms_opt_des_par.m_UA_rec_total);
-			lb.push_back(1 - 1800000 / ms_opt_des_par.m_UA_rec_total);
-			ub.push_back(1 - 650000 / ms_opt_des_par.m_UA_rec_total);
+			x.push_back(1 - 800000 / ms_opt_des_par.m_UA_rec_total);
+			lb.push_back(1 - 1000000 / ms_opt_des_par.m_UA_rec_total);
+			ub.push_back(1 - 700000 / ms_opt_des_par.m_UA_rec_total);
 		}
 		else {
 			x.push_back(ms_opt_des_par.m_LT_frac_guess);
@@ -2792,7 +2869,6 @@ void C_RecompCycle::opt_design_core(int & error_code)
 		m_objective_metric_opt = 0.0;
 
 		// Set up instance of nlopt class and set optimization parameters
-		//nlopt::opt		opt_des_cycle(nlopt::LN_COBYLA, index);
 		nlopt::opt		opt_des_cycle(nlopt::LN_SBPLX, index);
 		opt_des_cycle.set_lower_bounds(lb);
 		opt_des_cycle.set_upper_bounds(ub);
@@ -3587,6 +3663,7 @@ void C_RecompCycle::finalize_design(int & error_code)
 
 	ms_des_solved.m_eta_thermal = m_eta_thermal_calc_last;
 	ms_des_solved.m_W_dot_net = m_W_dot_net_last;
+	
 	ms_des_solved.m_m_dot_mc = m_m_dot_mc;
 	ms_des_solved.m_m_dot_rc = m_m_dot_rc;
 	ms_des_solved.m_m_dot_t = m_m_dot_t;
@@ -3595,6 +3672,8 @@ void C_RecompCycle::finalize_design(int & error_code)
 	ms_des_solved.m_UA_LTR = ms_des_par.m_UA_LT;
 	ms_des_solved.m_UA_HTR = ms_des_par.m_UA_HT;
 	
+	turbomachineryCost();
+	calculateLCOE();
 
 	spdlog::get("logger")->info(std::to_string(ms_des_par.m_des_HX_allocation_type) +
 		", " + std::to_string(ms_des_par.m_UA_HT + ms_des_par.m_UA_LT) +
@@ -3603,6 +3682,8 @@ void C_RecompCycle::finalize_design(int & error_code)
 		", " + std::to_string(m_pres_last[MC_IN]) +
 		", " + std::to_string(m_pres_last[MC_OUT]) +
 		", " + std::to_string(m_eta_thermal_calc_last) +
+		", " + std::to_string(ms_des_solved.m_cost_per_kW) +
+		", " + std::to_string(ms_des_solved.m_LCOE) +
 		", " + std::to_string(ms_des_solved.m_recomp_frac) +
 		", " + std::to_string(m_m_dot_t) +
 		", " + std::to_string(ms_des_par.m_UA_HT) +
@@ -3626,7 +3707,17 @@ void C_RecompCycle::finalize_design(int & error_code)
 		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_NTU_design) +
 		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_Q_dot_design) +
 		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_eff_limited) + 
-		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_T_h_out));
+		", " + std::to_string(ms_des_solved.ms_LTR_des_solved.m_T_h_out) +
+
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_HTR_D_fr) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_HTR_L) +
+		", " + std::to_string(PI * pow(ms_des_solved.ms_HTR_des_solved.m_HTR_D_fr, 2) / 4 * ms_des_solved.ms_HTR_des_solved.m_HTR_L) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_HTR_valve_HTHP_cv) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_HTR_valve_LTHP_cv) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_HTR_valve_HTLP_cv) +
+		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_HTR_valve_LTLP_cv) +
+		", " + std::to_string(ms_des_solved.m_cost_per_kW_new) +
+		", " + std::to_string(ms_des_solved.m_LCOE_new));
 }
 
 //void C_RecompCycle::off_design(S_od_parameters & od_par_in, int & error_code)
@@ -6662,25 +6753,6 @@ double fmin_cb_opt_des_fixed_P_high(double P_high /*kPa*/, void *data)
 	C_RecompCycle *frame = static_cast<C_RecompCycle*>(data);
 
 	return frame->opt_eta_fixed_P_high(P_high);
-}
-
-double nlopt_HTR_eff_ineq(const std::vector<double> &x, std::vector<double> &grad, void *data)
-{
-	C_RecompCycle *frame = static_cast<C_RecompCycle*>(data);
-	if (frame != NULL) {
-		return (frame->get_design_solved()->ms_HTR_des_solved.m_eff_design - 0.8);
-	}
-	else
-		return 0.0;
-}
-double nlopt_LTR_eff_ineq(const std::vector<double> &x, std::vector<double> &grad, void *data)
-{
-	C_RecompCycle *frame = static_cast<C_RecompCycle*>(data);
-	if (frame != NULL) {
-		return (frame->get_design_solved()->ms_LTR_des_solved.m_eff_design - 0.9);
-	}
-	else
-		return 0.0;
 }
 
 double nlopt_cb_opt_des(const std::vector<double> &x, std::vector<double> &grad, void *data)

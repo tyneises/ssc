@@ -23,6 +23,8 @@ RegeneratorModel::RegeneratorModel()
 	CarryoverMassFlow_dP = new MonoSolver<RegeneratorModel>();
 	CarryoverMassFlow_AR = new MonoSolver<RegeneratorModel>();
 
+	valves = new valve[4];
+
 	if (spdlog::get("logger") == nullptr) {
 		auto logger = spdlog::basic_logger_mt("logger", LOG_FILEPATH);
 		spdlog::flush_on(spdlog::level::info);
@@ -53,6 +55,8 @@ RegeneratorModel::~RegeneratorModel()
 	delete WallThickness;
 	delete CarryoverMassFlow_dP;
 	delete CarryoverMassFlow_AR;
+
+	delete[] valves;
 }
 
 void RegeneratorModel::packedspheresNdFit(double Re, double * f, double * j_H)
@@ -154,6 +158,11 @@ void RegeneratorModel::massflowVariablesInit()
 	C_R = C_dot_min / C_dot_max;
 }
 
+/*void RegeneratorModel::calculateModel()
+{
+
+}*/
+
 void RegeneratorModel::calculateModel()
 {
 	//							[SECTION 1]
@@ -242,13 +251,60 @@ void RegeneratorModel::calculateModel()
 
 	epsilon = (1.0 - exp(-X)) / (1.0 - C_R * exp(-X));
 
-	if (epsilon < 0 || epsilon > 1) {
+	/*if (epsilon < 0 || epsilon > 1) {
 		throw invalid_argument("Epsilon is not between 0 and 1!");
-	}
+	}*/
 
 	Q_dot_calc = epsilon * Q_dot_max;
 	Q_dot_a_calc = Q_dot_calc - Q_dot_loss;
 	dP_max = max(dP_C, dP_H);
+}
+
+void RegeneratorModel::setValves(valve * valves)
+{
+	for (int i = 0; i < 4; i++) {
+		this->valves[i] = valves[i];
+		
+	}
+}
+
+void RegeneratorModel::calculateValveCvs()
+{
+	valves[2].m_dot = valves[3].m_dot = m_dot_H;
+	valves[1].m_dot = m_dot_C;
+	valves[0].m_dot = m_dot_C + m_dot_carryover;
+
+	valves[0].P_in = P_C;
+	valves[0].T_in = T_C_in;
+	valves[1].P_in = P_C_out;
+	valves[1].T_in = T_C_out;
+	valves[2].P_in = P_H_in;
+	valves[2].T_in = T_H_in;
+	valves[3].P_in = P_H_out;
+	valves[3].T_in = T_H_out;
+
+	double f_t = 100;
+	//"Valve Constants for fully open flow"
+	double F_p = 1;
+	double x_t0 = 0.24;
+
+	//"Valve parameters"
+	double x_t = x_t0 * ((1.0929e-09)*pow(f_t, 5) - (2.9987e-07)*pow(f_t, 4) + (2.4587e-05)*pow(f_t, 3) - (6.4267e-05)*pow(f_t, 2) - (7.0864E-02)*f_t + 3.1976);
+
+	double rho_in, k_in, Y, C_v;
+	for (int index = 0; index < 4; index++) {
+		CO2_TP(valves[index].T_in, valves[index].P_in, &CO2State);
+		rho_in = CO2State.dens;
+		k_in = CO2State.cp / CO2State.cv;
+
+		//"Gas expansion factor"
+		Y = 1 - (valves[index].dP / valves[index].P_in) / (3 * (k_in / 1.4)*x_t);
+
+		//"Flow rate - pressure drop relationship"
+		C_v = sqrt(100 / rho_in / valves[index].dP) * valves[index].m_dot * 3600 / 27.3 / F_p / Y;
+		valves[index].cv = C_v / ((4.0064e-10)*pow(f_t, 5) - (1.0249e-07)*pow(f_t, 4) + (7.4964e-06)*pow(f_t, 3) - (8.2991e-05)*pow(f_t, 2) + (5.7679E-03)*f_t);
+		//double dP_calc = 1 / rho_in * pow((valves[valveIndex].m_dot * 3600 / 27.3 / F_p / C_v / Y), 2) * 100;
+	}
 }
 
 void RegeneratorModel::loadTables() {
@@ -657,7 +713,7 @@ int RegeneratorModel::getDesignSolution()
 	HotPressureDrop_SP.target = 0;
 	HotPressureDrop_SP.guessValue1 = 0.8*targetdP_max_Regen;		HotPressureDrop_SP.guessValue2 = targetdP_max_Regen;
 	HotPressureDrop_SP.lowerBound = 0.1;					HotPressureDrop_SP.upperBound = P_H_in;
-	HotPressureDrop_SP.tolerance = 0.001;
+	HotPressureDrop_SP.tolerance = 0.0001;
 	HotPressureDrop_SP.iterationLimit = 50;
 	HotPressureDrop_SP.isErrorRel = false;
 	HotPressureDrop_SP.classInst = this;
@@ -668,7 +724,7 @@ int RegeneratorModel::getDesignSolution()
 	ColdPressureDrop_SP.target = 0;
 	ColdPressureDrop_SP.guessValue1 = 0.3*targetdP_max_Regen - 1;		ColdPressureDrop_SP.guessValue2 = 0.3*targetdP_max_Regen;
 	ColdPressureDrop_SP.lowerBound = 0.1;							ColdPressureDrop_SP.upperBound = P_C;
-	ColdPressureDrop_SP.tolerance = 0.001;
+	ColdPressureDrop_SP.tolerance = 0.0001;
 	ColdPressureDrop_SP.iterationLimit = 50;
 	ColdPressureDrop_SP.isErrorRel = false;
 	ColdPressureDrop_SP.classInst = this;
@@ -678,9 +734,9 @@ int RegeneratorModel::getDesignSolution()
 	if (secondTargetMode == targetModes::dP_max) {
 		Length_SP.solverName = "Length Solver";
 		Length_SP.target = targetdP_max_Regen;
-		Length_SP.guessValue1 = 0.8;		Length_SP.guessValue2 = 1;
+		Length_SP.guessValue1 = 1.1;		Length_SP.guessValue2 = 1.3;
 		Length_SP.lowerBound = 0.1;			Length_SP.upperBound = 10;
-		Length_SP.tolerance = 0.001;
+		Length_SP.tolerance = 0.0001;
 		Length_SP.iterationLimit = 50;
 		Length_SP.isErrorRel = true;
 		Length_SP.classInst = this;
@@ -691,8 +747,8 @@ int RegeneratorModel::getDesignSolution()
 		Diameter_dP_SP.target = targetParameter;
 		Diameter_dP_SP.guessValue1 = 0.7;		Diameter_dP_SP.guessValue2 = 0.9;
 		Diameter_dP_SP.lowerBound = 0.1;		Diameter_dP_SP.upperBound = 10;
-		Diameter_dP_SP.tolerance = 0.001;
-		Diameter_dP_SP.iterationLimit = 50;
+		Diameter_dP_SP.tolerance = 0.0001;
+		Diameter_dP_SP.iterationLimit = 100;
 		Diameter_dP_SP.isErrorRel = true;
 		Diameter_dP_SP.classInst = this;
 		Diameter_dP_SP.monoEquation = &RegeneratorModel::Diameter_dP_ME;
@@ -701,7 +757,7 @@ int RegeneratorModel::getDesignSolution()
 		CarryoverMassFlow_dP_SP.solverName = "Carryover Mass dP Solver";
 		CarryoverMassFlow_dP_SP.target = 0;
 		CarryoverMassFlow_dP_SP.lowerBound = 0;		CarryoverMassFlow_dP_SP.upperBound = min(m_dot_C, m_dot_H);
-		CarryoverMassFlow_dP_SP.tolerance = 0.01;
+		CarryoverMassFlow_dP_SP.tolerance = 0.001;
 		CarryoverMassFlow_dP_SP.iterationLimit = 50;
 		CarryoverMassFlow_dP_SP.isErrorRel = false;
 		CarryoverMassFlow_dP_SP.classInst = this;
@@ -722,7 +778,7 @@ int RegeneratorModel::getDesignSolution()
 		CarryoverMassFlow_AR_SP.solverName = "Carryover Mass AR Solver";
 		CarryoverMassFlow_AR_SP.target = 0;
 		CarryoverMassFlow_AR_SP.lowerBound = 0;		CarryoverMassFlow_AR_SP.upperBound = min(m_dot_C, m_dot_H);
-		CarryoverMassFlow_AR_SP.tolerance = 0.01;
+		CarryoverMassFlow_AR_SP.tolerance = 0.001;
 		CarryoverMassFlow_AR_SP.iterationLimit = 50;
 		CarryoverMassFlow_AR_SP.isErrorRel = false;
 		CarryoverMassFlow_AR_SP.classInst = this;
@@ -826,6 +882,7 @@ int RegeneratorModel::getDesignSolution()
 		}
 	}
 
+	calculateValveCvs();
 	carryoverEnthDrop();
 	if (calculateCost() != 0) {
 		return -1;
@@ -873,5 +930,6 @@ void RegeneratorModel::getSolution(RegeneratorSolution * solution)
 	solution->costModule = costModule;
 	solution->L = L;
 	solution->D_fr = D_fr;
+	solution->valves = valves;
 	solution->wallThickness = wallThickness;
 }

@@ -85,7 +85,7 @@ public:
 		double m_UA_recup_tot_des;		//[kW/K] Total recuperator conductance
 		int m_cycle_config;				//[-] 2 = partial cooling, [else] = recompression
 
-		// Cycle design parameters
+										// Cycle design parameters
 		std::vector<double> m_DP_LT;		//(cold, hot) positive values are absolute [kPa], negative values are relative (-)
 		std::vector<double> m_DP_HT;		//(cold, hot) positive values are absolute [kPa], negative values are relative (-)
 		std::vector<double> m_DP_PC;		//(cold, hot) positive values are absolute [kPa], negative values are relative (-)
@@ -120,11 +120,11 @@ public:
 		double m_PR_mc_guess;				//[-] Initial guess for ratio of P_mc_out to P_mc_in
 		bool m_fixed_PR_mc;					//[-] if true, ratio of P_mc_out to P_mc_in is fixed at PR_mc_guess
 
-		// PHX design parameters
-		// This is a PHX rather than system parameter because we don't know T_CO2_in until cycle model is solved
+											// PHX design parameters
+											// This is a PHX rather than system parameter because we don't know T_CO2_in until cycle model is solved
 		double m_phx_dt_cold_approach;	//[K/C] Temperature difference between cold HTF and PHX CO2 inlet
 
-		// Air cooler parameters
+										// Air cooler parameters
 		double m_frac_fan_power;		//[-] Fraction of total cycle power 'S_des_par_cycle_dep.m_W_dot_fan_des' consumed by air fan
 		double m_deltaP_cooler_frac;    // [-] Fraction of high side (of cycle, i.e. comp outlet) pressure that is allowed as pressure drop to design the ACC
 
@@ -139,7 +139,7 @@ public:
 			m_des_HX_allocation_type = 0;	//UA
 			m_HTR_tech_type = 1;			// PCHE
 
-			// Not used for PCHE
+											// Not used for PCHE
 			m_HTR_target_2 = 0;
 			m_HTR_target_2_value = 216;
 			m_HTR_operation_mode = 0;
@@ -180,7 +180,7 @@ public:
 		double m_T_htf_hot;		//[K] Hot HTF temperature from the receiver or storage
 		double m_m_dot_htf;		//[kg/s] HTF mass flow rate 
 
-		// Ambient Conditions
+								// Ambient Conditions
 		double m_T_amb;			//[K] Ambient temperature
 
 		S_od_par()
@@ -263,16 +263,16 @@ public:
 	// Callback function with progress bar
 	bool(*mf_callback_update)(std::string &log_msg, std::string &progress_msg, void *data, double progress, int out_type);
 	void *mp_mf_update;
-	
+
 	C_sco2_rc_csp_template()
 	{
 		mf_callback_update = 0;
 		mp_mf_update = 0;
 	};
 
-	~C_sco2_rc_csp_template(){};
+	~C_sco2_rc_csp_template() {};
 
-	virtual void design(C_sco2_rc_csp_template::S_des_par des_par) = 0;	
+	virtual void design(C_sco2_rc_csp_template::S_des_par des_par) = 0;
 
 	virtual const C_HX_counterflow::S_des_calc_UA_par * get_phx_des_par() = 0;
 

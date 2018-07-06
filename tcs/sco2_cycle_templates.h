@@ -53,6 +53,15 @@ public:
 		double m_recomp_frac;	//[-]
 		double m_UA_LTR;			//[kW/K]
 		double m_UA_HTR;			//[kW/K]
+		double m_cost_per_kW;			//[$/kW]
+		double m_cost_per_kW_new;		//[$/kW]
+		double m_LCOE;				//[cents/kWh]
+		double m_LCOE_new;				//[cents/kWh]
+		double m_MC_cost;			//[$]
+		double m_RC_cost;			//[$]
+		double m_Turbine_cost;		//[$]
+		double m_Precooler_cost;	//[$]
+		double m_PHX_cost;			//[$]
 
 		bool m_is_rc;
 
@@ -66,7 +75,8 @@ public:
 		S_design_solved()
 		{
 			m_eta_thermal = m_W_dot_net = m_m_dot_mc = m_m_dot_rc = m_m_dot_t = m_recomp_frac =
-				m_UA_LTR = m_UA_HTR = std::numeric_limits<double>::quiet_NaN();
+				m_UA_LTR = m_UA_HTR = m_cost_per_kW = m_cost_per_kW_new = m_LCOE = m_LCOE_new =
+				m_MC_cost = m_RC_cost = m_Turbine_cost = m_Precooler_cost = m_PHX_cost = std::numeric_limits<double>::quiet_NaN();
 
 			m_is_rc = true;
 		}
@@ -275,6 +285,29 @@ public:
 		}
 	};
 	
+	struct S_des_par_Dmitrii
+	{
+		// System Design
+		int m_hot_fl_code;				//[-] Integer coding the HTF type
+		util::matrix_t<double> mc_hot_fl_props;	//[-] Custom HTF properties (if applicable)
+		double m_T_htf_hot_in;			//[K] Design-point hot inlet temperature
+		double m_T_amb_des;				//[K] Ambient temperature
+		double m_elevation;				//[m] Site elevation
+		double m_phx_dt_cold_approach;	//[K/C] Temperature difference between cold HTF and PHX CO2 inlet								// Air cooler parameters
+		double m_frac_fan_power;		//[-] Fraction of total cycle power 'S_des_par_cycle_dep.m_W_dot_fan_des' consumed by air fan
+		double m_deltaP_cooler_frac;    // [-] Fraction of high side (of cycle, i.e. comp outlet) pressure that is allowed as pressure drop to design the ACC
+
+		S_des_par_Dmitrii()
+		{
+			m_hot_fl_code = -1;
+
+			m_T_htf_hot_in = m_T_amb_des =
+				m_elevation =
+				m_phx_dt_cold_approach = m_frac_fan_power = m_deltaP_cooler_frac =
+				std::numeric_limits<double>::quiet_NaN();
+		}
+	};
+
 protected:
 
 	S_design_solved ms_des_solved;
@@ -289,6 +322,8 @@ protected:
 
 public:
 
+	S_des_par_Dmitrii ms_des_par_Dmitrii;
+	
 	C_sco2_cycle_core()
 	{
 		// Set design limits!!!!

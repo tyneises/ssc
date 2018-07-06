@@ -134,9 +134,9 @@ public:
 		ofstream uaFile;
 		string SSCDIR1(std::getenv("SSCDIR"));
 		uaFile.open(SSCDIR1 + "/build_sdk/examples/Regen-UA.log");
-		uaFile << "Epsilon,\tUA,\t\tNTU,\tD_fr,\tL,\t\tL/D,\t\tT_H_out,\tComass,\t\tCost,\t\tdP_max,\tms" << endl;
+		//uaFile << "Epsilon,\tUA,\t\tNTU,\tD_fr,\tL,\t\tL/D,\t\tT_H_out,\tComass,\t\tCost,\t\tdP_max,\tms" << endl;
 		//uaFile << "Epsilon,UA,Q_dot,NTU,D_fr,L,L/D,T_H_out,Comass,Cost,dP_max,ms" << endl;
-		char* format = "%.5f,\t%.0f,\t%.2f,\t%.2f,\t%.2f,\t%.2f,\t%.2f,\t\t%.2f,\t\t%.2f,\t\t%.0f,\t\t%.2f,\t\t\t\t%.0f";
+		char* format = "%.5f,\t%.0f,\t%.2f,\t%.2f,\t%.2f,\t%.2f,\t%.2f,\t\t%.2f,\t\t%.2f,\t\t%.0f,\t\t%.2f,\t\t\t\t%.0f,\t%.0f,\t%.0f,\t%.0f,\t%.0f";
 		//char* format = "%.5f,%.0f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.0f,%.2f,%.0f";
 
 		RegenHX* HT_regen = new RegenHX();
@@ -147,17 +147,18 @@ public:
 
 
 		double q_dot, T_c_out, T_h_out, comass;
-		for (int cost = 760000; cost <= 760000; cost += 10000) {
+		double cost = targetCost;
+		//for (double cost = 650000; cost <= 750000; cost += 100) {
 			comass = q_dot = T_c_out = T_h_out = std::numeric_limits<double>::quiet_NaN();
 
 			begin = clock();
 			try {
-				HT_regen->set_params(targetModes::COST, targetModes::AR, operationModes::PARALLEL, targetdP_max, P_0, D_s, e_v, Q_dot_loss);
-				HT_regen->design_fix_TARGET_calc_outlet(1, 650000, 0.99, T_C_in, P_C, m_dot_C, P_C, T_H_in, P_H, m_dot_H, P_H - targetdP_max, q_dot, T_c_out, T_h_out);
+				HT_regen->set_params(targetModes::COST, targetModes::dP_max, operationModes::PARALLEL, targetdP_max, P_0, D_s, e_v, Q_dot_loss);
+				HT_regen->design_fix_TARGET_calc_outlet(1, cost, 0.99, T_C_in, P_C, m_dot_C, P_C, T_H_in, P_H, m_dot_H, P_H - targetdP_max, q_dot, T_c_out, T_h_out);
 				end = clock();
 				sprintf(output, format,
 					HT_regen->ms_des_solved.m_eff_design,
-					HT_regen->ms_des_solved.m_UA_design_total,
+					HT_regen->ms_des_solved.m_aUA_design_total,
 					HT_regen->ms_des_solved.m_Q_dot_design,
 					HT_regen->ms_des_solved.m_NTU_design,
 					HT_regen->getD_fr(),
@@ -166,6 +167,11 @@ public:
 					T_h_out,
 					HT_regen->ms_des_solved.m_m_dot_carryover,
 					HT_regen->getCost(),
+					HT_regen->ms_des_solved.m_DP_hot_des,
+					HT_regen->ms_des_solved.m_HTR_valve_HTHP_cv,
+					HT_regen->ms_des_solved.m_HTR_valve_LTHP_cv,
+					HT_regen->ms_des_solved.m_HTR_valve_HTLP_cv,
+					HT_regen->ms_des_solved.m_HTR_valve_LTLP_cv,
 					double(end - begin) / CLOCKS_PER_SEC * 1000.0);
 				uaFile << output << endl;
 				uaFile.flush();
@@ -173,9 +179,9 @@ public:
 			catch(C_csp_exception &){
 				end = clock();
 				uaFile << "-,\t\t\t" << cost << ",\t-,\t\t-,\t\t-,\t\t-,\t\t\t-,\t\t\t-,\t\t\t-,\t\t\t\t" << double(end - begin) / CLOCKS_PER_SEC * 1000.0 << endl;
-				continue;
+				//continue;
 			}
-		}
+		//}
 
 		uaFile.flush();
 		uaFile.close();

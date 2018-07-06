@@ -38,6 +38,15 @@ namespace targetModes {
 	};
 }
 
+struct valve {
+	double T_in;
+	double P_in;
+	double m_dot;
+	double cv;
+	double dP;
+	double cost;
+};
+
 //! /breif Temporary solution that allows data transfer to RegenHX calss.
 struct RegeneratorSolution {
 	double dP_C;
@@ -59,15 +68,7 @@ struct RegeneratorSolution {
 	double L;
 	double D_fr;
 	double wallThickness;
-};
-
-struct valve {
-	double T_in;
-	double P_in;
-	double m_dot;
-	double cv;
-	double dP;
-	double cost;
+	valve* valves;
 };
 
 /*!
@@ -128,6 +129,8 @@ private:
 
 	//! Contains property functions that are used to set CO2 states.
 	CO2_state CO2State;
+
+	valve* valves;
 
 	//! Used to store error codes produced by CO2_state class methods. 
 	int error;
@@ -714,6 +717,8 @@ private:
 	*/
 	void calculateModel();
 
+	void calculateValveCvs();
+
 	//! Loads lookup tables into memory for quick access.
 	void loadTables();
 
@@ -807,6 +812,8 @@ public:
 		\sa setParameters(), setDesignTargets()
 	*/
 	void setInletStates(double T_H_in, double P_H_in, double m_dot_H, double T_C_in, double P_C, double m_dot_C);
+
+	void setValves(valve * valves);
 
 	void setOutletStates(double T_H_out, double P_H_out, double T_C_out, double P_C_out);
 

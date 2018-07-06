@@ -442,6 +442,11 @@ public:
 	};
 
 private:
+
+	LookupTable_2D * sunshot_LCOE_Table;
+	LookupTable_1D * PHX_Cost_Table;
+	LookupTable_1D * Precooler_Cost_Table;
+
 		// Component classes
 	C_turbine m_t;
 	C_comp_multi_stage m_mc_ms;
@@ -509,6 +514,11 @@ private:
 
 	void design_core_standard(int & error_code);
 	
+	void calculateLCOE();
+	void turbomachineryCost();
+	void design_air_cooler(double multiplier);
+	void design_phx(double multiplier);
+	
 	//void design_core_bypass(int & error_code);
 
 	//void design_core_bypass150C(int & error_code);
@@ -534,9 +544,13 @@ private:
 	void clear_ms_od_solved();
 
 public:
-
 	C_RecompCycle()
 	{
+		std::string SSCDIR1(std::getenv("SSCDIR"));
+		sunshot_LCOE_Table = new LookupTable_2D(SSCDIR1 + "/tcs/PropertyFiles/SunShot_LCOE.csv");
+		PHX_Cost_Table = new LookupTable_1D(SSCDIR1 + "/tcs/PropertyFiles/PHECost.csv");
+		Precooler_Cost_Table = new LookupTable_1D(SSCDIR1 + "/tcs/PropertyFiles/PrecoolerCost.csv");
+
 		m_temp_last.resize(END_SCO2_STATES);
 		std::fill(m_temp_last.begin(), m_temp_last.end(), std::numeric_limits<double>::quiet_NaN());
 		m_pres_last = m_enth_last = m_entr_last = m_dens_last = m_temp_last;
@@ -575,7 +589,11 @@ public:
 
 	CO2_state mc_co2_props;
 
-	~C_RecompCycle(){}
+	~C_RecompCycle(){
+		delete sunshot_LCOE_Table;
+		delete PHX_Cost_Table;
+		delete Precooler_Cost_Table;
+	}
 
 	void design(S_design_parameters & des_par_in, int & error_code);
 
@@ -935,10 +953,6 @@ public:
 	// Called by 'nlopt...', so needs to be public
 	//double opt_od_eta(const std::vector<double> &x);
 };
-
-double nlopt_HTR_eff_ineq(const std::vector<double> &x, std::vector<double> &grad, void *data);
-
-double nlopt_LTR_eff_ineq(const std::vector<double> &x, std::vector<double> &grad, void *data);
 
 double nlopt_cb_opt_des(const std::vector<double> &x, std::vector<double> &grad, void *data);
 
