@@ -254,6 +254,11 @@ const C_HX_counterflow::S_od_solved * C_sco2_re_hx_pche::get_od_solved()
 	return &mc_hx.ms_od_solved;
 }
 
+void C_sco2_re_hx_pche::set_cost_multiplier(double multiplier)
+{
+	mc_hx.ms_init_par.cost_multiplier = multiplier;
+}
+
 void C_sco2_re_hx_regen::initialize(int N_sub_hx)
 {
 	mc_hx.initialize(N_sub_hx);

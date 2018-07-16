@@ -731,6 +731,8 @@ int RegeneratorModel::getDesignSolution()
 	ColdPressureDrop_SP.monoEquation = &RegeneratorModel::ColdPressureDrop_ME;
 	ColdPressureDrop->setParameters(&ColdPressureDrop_SP);
 	
+	double m_dot_average = (m_dot_C + m_dot_H) / 2;
+
 	if (secondTargetMode == targetModes::dP_max) {
 		Length_SP.solverName = "Length Solver";
 		Length_SP.target = targetdP_max_Regen;
@@ -745,8 +747,8 @@ int RegeneratorModel::getDesignSolution()
 
 		Diameter_dP_SP.solverName = "Diameter_dP Solver";
 		Diameter_dP_SP.target = targetParameter;
-		Diameter_dP_SP.guessValue1 = 0.7;		Diameter_dP_SP.guessValue2 = 0.9;
-		Diameter_dP_SP.lowerBound = 0.1;		Diameter_dP_SP.upperBound = 10;
+		Diameter_dP_SP.guessValue1 = 0.7 * m_dot_average / 37;		Diameter_dP_SP.guessValue2 = 0.9 * m_dot_average / 37;
+		Diameter_dP_SP.lowerBound = 0.1;		Diameter_dP_SP.upperBound = 10 * m_dot_average / 37;
 		Diameter_dP_SP.tolerance = 0.0001;
 		Diameter_dP_SP.iterationLimit = 100;
 		Diameter_dP_SP.isErrorRel = true;

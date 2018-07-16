@@ -190,6 +190,7 @@ public:
 	struct S_init_par
 	{
 		int m_N_sub_hx;				//[-] Number of sub-heat exchangers used in the model
+		double cost_multiplier;		//[-] Baseline value used for cost scaling
 
 		int m_hot_fl;				//[-] Integer code for hot fluid - assumed be HTF in library or w/ lookup unless = CO2 enumeration
 		util::matrix_t<double> mc_hot_fl_props;		//[-] If applicable, user-defined properties
@@ -199,6 +200,7 @@ public:
 
 		S_init_par()
 		{
+			cost_multiplier = 1;
 			m_N_sub_hx = m_hot_fl = m_cold_fl = -1;
 		}
 	};
@@ -253,10 +255,16 @@ public:
 		{
 			m_Q_dot_design = m_UA_design_total = m_aUA_design_total = m_cost_design_total = m_min_DT_design = m_eff_design = 
 				m_NTU_design = m_T_h_out = m_T_c_out =
-				m_DP_cold_des = m_DP_hot_des = m_m_dot_carryover = m_HTR_D_fr = m_HTR_L = m_HTR_valve_HTHP_cv
-				= m_HTR_valve_LTHP_cv = m_HTR_valve_HTLP_cv = m_HTR_valve_LTLP_cv = std::numeric_limits<double>::quiet_NaN();
+				m_DP_cold_des = m_DP_hot_des = std::numeric_limits<double>::quiet_NaN();
 			m_eff_limited = false;
 			m_HTR_AR = -1;
+			m_m_dot_carryover = -1;
+			m_HTR_D_fr = -1;
+			m_HTR_L = -1;
+			m_HTR_valve_HTHP_cv = -1;
+			m_HTR_valve_LTHP_cv = -1;
+			m_HTR_valve_HTLP_cv = -1;
+			m_HTR_valve_LTLP_cv = -1;
 		}
 	};
 

@@ -118,6 +118,8 @@ public:
 	virtual double od_delta_p_hot(double m_dot_h /*kg/s*/);
 
 	virtual const C_HX_counterflow::S_od_solved * get_od_solved();
+
+	void set_cost_multiplier(double multiplier);
 };
 
 class C_sco2_re_hx_regen : public C_sco2_re_hx_template

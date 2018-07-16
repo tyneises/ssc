@@ -161,7 +161,13 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 	//valves[3].cv = 950;
 	valves[3].dP = 29.6;
 
-	costValves = 474000;
+	if (operationMode == operationModes::PARALLEL) {
+		costValves = 474000;
+	}
+	else if (operationMode == operationModes::REDUNDANT) {
+		costValves = 550000;
+	}
+	
 	regenModel->setValves(valves);
 
 	targetModes::target2Modes secondTargetMode = target_2;

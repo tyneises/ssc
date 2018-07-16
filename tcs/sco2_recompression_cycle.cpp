@@ -1937,23 +1937,23 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	ms_des_par.m_recomp_frac = 0.3436;
 	ms_des_par.m_UA_LT = 6948000;
 	ms_des_par.m_UA_HT = 682621;*/
-	
+
 	ms_des_par.m_DP_LT[0] = 187.5;
 	ms_des_par.m_DP_LT[1] = 187.5;
-	
+
 	if (ms_des_par.m_HTR_target_2 == targetModes::dP_max) {
 		ms_des_par.m_DP_HT[1] = ms_des_par.m_HTR_target_2_value;
 	}
 	else {
 		ms_des_par.m_DP_HT[1] = 216;
 	}
-	
+
 	if (ms_des_par.m_HTR_tech_type == 1) {
 		ms_des_par.m_DP_HT[0] = 187.5;
 		ms_des_par.m_DP_HT[1] = 187.5;
 	}
 
-	if( ms_des_par.m_recomp_frac < 0.01 )
+	if (ms_des_par.m_recomp_frac < 0.01)
 	{
 		ms_des_par.m_recomp_frac = 0.0;
 		double UA_tot = ms_des_par.m_UA_LT + ms_des_par.m_UA_HT;
@@ -1967,11 +1967,16 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	// Initialize Recuperators
 		// LTR
 	mc_LT_recup.initialize(ms_des_par.m_N_sub_hxrs);
-		// HTR
-	if (ms_des_par.m_HTR_tech_type == 1)
+	mc_LT_recup.ms_init_par.cost_multiplier = 1;
+
+	// HTR
+	if (ms_des_par.m_HTR_tech_type == 1) {
+		mc_HTR_pche.set_cost_multiplier(1);
 		mpc_HTR = &mc_HTR_pche;
-	else 
+	}
+	else {
 		mpc_HTR = &mc_HTR_regen;
+	}
 	
 	mpc_HTR->initialize(ms_des_par.m_N_sub_hxrs);
 
@@ -2828,7 +2833,7 @@ void C_RecompCycle::opt_design_core(int & error_code)
 		x.push_back(ms_opt_des_par.m_recomp_frac_guess);
 		/*lb.push_back(0.0);
 		ub.push_back(1.0);*/
-		lb.push_back(0.2);
+		lb.push_back(0.1);
 		ub.push_back(0.45);
 		scale.push_back(0.05);
 
@@ -2849,7 +2854,7 @@ void C_RecompCycle::opt_design_core(int & error_code)
 		if (ms_opt_des_par.m_des_HX_allocation_type == 1 && ms_opt_des_par.m_HTR_tech_type == 2) {
 			x.push_back(1 - 800000 / ms_opt_des_par.m_UA_rec_total);
 			lb.push_back(1 - 1000000 / ms_opt_des_par.m_UA_rec_total);
-			ub.push_back(1 - 700000 / ms_opt_des_par.m_UA_rec_total);
+			ub.push_back(1 - 600000 / ms_opt_des_par.m_UA_rec_total);
 		}
 		else {
 			x.push_back(ms_opt_des_par.m_LT_frac_guess);
@@ -3716,8 +3721,23 @@ void C_RecompCycle::finalize_design(int & error_code)
 		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_HTR_valve_LTHP_cv) +
 		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_HTR_valve_HTLP_cv) +
 		", " + std::to_string(ms_des_solved.ms_HTR_des_solved.m_HTR_valve_LTLP_cv) +
+
+		", " + std::to_string(ms_des_solved.m_MC_cost) +
+		", " + std::to_string(ms_des_solved.m_RC_cost) +
+		", " + std::to_string(ms_des_solved.m_Turbine_cost) +
+		", " + std::to_string(ms_des_solved.m_PHX_cost) +
+		", " + std::to_string(ms_des_solved.m_Precooler_cost) +
 		", " + std::to_string(ms_des_solved.m_cost_per_kW_new) +
-		", " + std::to_string(ms_des_solved.m_LCOE_new));
+		", " + std::to_string(ms_des_solved.m_LCOE_new) +
+
+		", " + std::to_string(ms_des_solved.m_MC_cost + ms_des_solved.m_RC_cost + ms_des_solved.m_Turbine_cost + ms_des_solved.m_PHX_cost + ms_des_solved.m_Precooler_cost) +
+		", " + std::to_string(ms_des_solved.m_MC_cost + ms_des_solved.m_RC_cost + ms_des_solved.m_Turbine_cost + ms_des_solved.m_PHX_cost + ms_des_solved.m_Precooler_cost + ms_des_solved.ms_HTR_des_solved.m_cost_design_total + ms_des_solved.ms_LTR_des_solved.m_cost_design_total) +
+		", " + std::to_string(fabs(m_W_dot_mc)) +
+		", " + std::to_string(fabs(m_W_dot_rc)) +
+		", " + std::to_string(fabs(m_W_dot_t)) +
+		", " + std::to_string(ms_des_solved.m_W_dot_net) +
+		", " + std::to_string(ms_des_solved.m_temp[MIXER_OUT]) +
+		", " + std::to_string(ms_des_solved.m_temp[LTR_HP_OUT]));
 }
 
 //void C_RecompCycle::off_design(S_od_parameters & od_par_in, int & error_code)

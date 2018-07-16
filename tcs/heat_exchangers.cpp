@@ -886,6 +886,7 @@ C_HX_counterflow::C_HX_counterflow()
 	m_is_HX_designed = false;
 	std::string SSCDIR1(std::getenv("SSCDIR"));
 	recupCostCurveTable = new LookupTable_1D(SSCDIR1 + "/tcs/PropertyFiles/RecupCost.csv");
+	//recupCostCurveTable = new LookupTable_1D(SSCDIR1 + "/tcs/PropertyFiles/RecupCarlsonCost-2.55.csv");
 }
 
 C_HX_counterflow::~C_HX_counterflow()
@@ -1117,90 +1118,19 @@ void C_HX_counterflow::design_fix_UA_calc_outlet(double UA_target /*kW/K*/, doub
 	ms_des_solved.m_DP_cold_des = P_c_in - P_c_out;		//[kPa]
 	ms_des_solved.m_DP_hot_des = P_h_in - P_h_out;		//[kPa]
 
-	if (fabs(UA_target - UA_calc) / UA_target > 0.01) {
+	if (eff_calc >= eff_limit) {
 		ms_des_solved.m_eff_limited = true;
 	}
 }
 
 double C_HX_counterflow::calc_UA_from_cost(double cost /*$*/)
 {
-	double UA = recupCostCurveTable->getValue("UA(kW/K)", "Cost($)", cost);
-	return UA;
-	//Calculate UA from Cost.
-	/*double aCost = cost / 2.55;
-	double C1, C2, UA1, UA2, UA;
-
-	if (aCost >= 2420057) {
-		return aCost / 1000.0;
-	}
-	else if (aCost >= 330000) {
-		C1 = 1; C2 = 1.1;
-		UA1 = 1000000; UA2 = 300000;
-	}
-	else if (aCost >= 130000) {
-		C1 = 1.1; C2 = 1.3;
-		UA1 = 300000; UA2 = 100000;
-	}
-	else if (aCost >= 42000) {
-		C1 = 1.3; C2 = 1.4;
-		UA1 = 100000; UA2 = 30000;
-	}
-	else if (aCost >= 31500) {
-		C1 = 1.4; C2 = 6.3;
-		UA1 = 30000; UA2 = 5000;
-	}
-	else if (aCost >= 24000) {
-		C1 = 6.3; C2 = 24;
-		UA1 = 5000; UA2 = 1000;
-	}
-	else {
-		return aCost / 24.0 / 1000.0;
-	}
-
-	UA = ((UA1 - UA2) / (C2 - C1)*C1 + UA1 - sqrt(pow((UA1 - UA2) / (C2 - C1)*C1 + UA1, 2) - 4 * aCost*(UA1 - UA2) / (C2 - C1))) / 2.0;
-
-	return UA / 1000.0;*/
+	return recupCostCurveTable->getValue("UA(kW/K)", "Cost($)", cost / ms_init_par.cost_multiplier);
 }
 
 double C_HX_counterflow::calc_cost_from_UA(double UA /*kW/K*/)
 {
-	double pricePerUA = recupCostCurveTable->getValue("Price($-K/kW)", "UA(kW/K)", UA);
-	return pricePerUA * UA;
-
-	//Calculate UA from Cost.
-	/*double C1, C2, UA1, UA2, cost;
-	UA = UA * 1000.0;
-
-	if (UA >= 1000000) {
-		return UA * 2.55;
-	}
-	else if (UA >= 300000) {
-		C1 = 1; C2 = 1.1;
-		UA1 = 1000000; UA2 = 300000;
-	}
-	else if (UA >= 100000) {
-		C1 = 1.1; C2 = 1.3;
-		UA1 = 300000; UA2 = 100000;
-	}
-	else if (UA >= 30000) {
-		C1 = 1.3; C2 = 1.4;
-		UA1 = 100000; UA2 = 30000;
-	}
-	else if (UA >= 5000) {
-		C1 = 1.4; C2 = 6.3;
-		UA1 = 30000; UA2 = 5000;
-	}
-	else if (UA >= 1000) {
-		C1 = 6.3; C2 = 24;
-		UA1 = 5000; UA2 = 1000;
-	}
-	else {
-		return UA * 24 * 2.55;
-	}
-
-	cost = UA * 2.55 * (C1 + (C2 - C1) * (UA1 - UA) / (UA1 - UA2));
-
-	return cost;*/
+	return recupCostCurveTable->getValue("Cost($)", "UA(kW/K)", UA) * ms_init_par.cost_multiplier;
 }
 
 void C_HX_counterflow::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetValue /*kW/K or $*/, double eff_limit /*-*/,
@@ -1220,12 +1150,15 @@ void C_HX_counterflow::design_fix_TARGET_calc_outlet(int targetType /*-*/, doubl
 	design_fix_UA_calc_outlet(UA_target, eff_limit, T_c_in, P_c_in, m_dot_c, P_c_out,
 		T_h_in, P_h_in, m_dot_h, P_h_out, q_dot, T_c_out , T_h_out);
 
-	ms_des_solved.m_UA_design_total = UA_target;
-	ms_des_solved.m_aUA_design_total = ms_des_solved.m_UA_design_total;
-	ms_des_solved.m_cost_design_total = calc_cost_from_UA(UA_target);
+	ms_des_solved.m_aUA_design_total = UA_target;
 
 	if (targetType == 1) {
-		ms_des_solved.m_UA_design_total = calc_cost_from_UA(UA_target);	//[$];
+		ms_des_solved.m_UA_design_total = targetValue;	//[$];
+		ms_des_solved.m_cost_design_total = targetValue;
+	}
+	else if (targetType == 0) {
+		ms_des_solved.m_UA_design_total = UA_target;
+		ms_des_solved.m_cost_design_total = calc_cost_from_UA(UA_target);
 	}
 }
 
