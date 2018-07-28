@@ -70,8 +70,12 @@ static var_info _cm_vtab_regenhx[] = {
 		{ SSC_INPUT,       SSC_NUMBER,       "parameters.P_0",						"",                    "s",              "",      "",          "*",               "",                    "" },
 		{ SSC_INPUT,       SSC_NUMBER,       "parameters.D_s",						"",                    "m",              "",      "",          "*",               "",                    "" },
 		{ SSC_INPUT,       SSC_NUMBER,       "parameters.e_v",						"",                    "-",              "",      "",          "*",               "",                    "" },
-		{ SSC_INPUT,       SSC_NUMBER,       "targets.targetdP_max",				"",                    "kPa",              "",      "",          "*",               "",                    "" },
-		{ SSC_INPUT,       SSC_NUMBER,       "targets.targetCost",					"",                    "$",              "",      "",          "*",               "",                    "" },
+		{ SSC_INPUT,       SSC_NUMBER,       "targets.target_2_value",				"",                    "",              "",      "",          "*",               "",                    "" },
+		{ SSC_INPUT,       SSC_NUMBER,       "targets.target_1",					"",                    "-",              "",      "",          "*",               "",                    "" },
+		{ SSC_INPUT,       SSC_NUMBER,       "targets.target_2",					"",                    "-",              "",      "",          "*",               "",                    "" },
+		{ SSC_INPUT,       SSC_NUMBER,       "targets.target_1_value",				"",                    "",              "",      "",          "*",               "",                    "" },
+		{ SSC_INPUT,       SSC_NUMBER,       "targets.operationMode",				"",                    "-",              "",      "",          "*",               "",                    "" },
+		{ SSC_INPUT,       SSC_NUMBER,       "targets.valveMode",					"",                    "-",              "",      "",          "*",               "",                    "" },
 
 
 
@@ -128,8 +132,13 @@ public:
 		double D_s = as_double("parameters.D_s");
 		double e_v = as_double("parameters.e_v");
 
-		double targetdP_max = as_double("targets.targetdP_max");
-		double targetCost = as_double("targets.targetCost");
+		int target_1 = as_integer("targets.target_1");
+		int target_2 = as_integer("targets.target_2");
+		int operationMode = as_integer("targets.operationMode");
+		int valveMode = as_integer("targets.valveMode");
+
+		double target_2_value = as_double("targets.target_2_value");
+		double target_1_value = as_double("targets.target_1_value");
 
 		ofstream uaFile;
 		string SSCDIR1(std::getenv("SSCDIR"));
@@ -147,14 +156,13 @@ public:
 
 
 		double q_dot, T_c_out, T_h_out, comass;
-		double cost = targetCost;
 		//for (double cost = 650000; cost <= 750000; cost += 100) {
 			comass = q_dot = T_c_out = T_h_out = std::numeric_limits<double>::quiet_NaN();
 
 			begin = clock();
 			try {
-				HT_regen->set_params(targetModes::COST, targetModes::dP_max, operationModes::PARALLEL, targetdP_max, P_0, D_s, e_v, Q_dot_loss);
-				HT_regen->design_fix_TARGET_calc_outlet(1, cost, 0.99, T_C_in, P_C, m_dot_C, P_C, T_H_in, P_H, m_dot_H, P_H - targetdP_max, q_dot, T_c_out, T_h_out);
+				HT_regen->set_params(target_1, target_2, operationMode, valveMode, target_2_value, P_0, D_s, e_v, Q_dot_loss);
+				HT_regen->design_fix_TARGET_calc_outlet(target_1, target_1_value, 0.99, T_C_in, P_C, m_dot_C, P_C, T_H_in, P_H, m_dot_H, P_H - target_2_value, q_dot, T_c_out, T_h_out);
 				end = clock();
 				sprintf(output, format,
 					HT_regen->ms_des_solved.m_eff_design,
@@ -178,7 +186,7 @@ public:
 			}
 			catch(C_csp_exception &){
 				end = clock();
-				uaFile << "-,\t\t\t" << cost << ",\t-,\t\t-,\t\t-,\t\t-,\t\t\t-,\t\t\t-,\t\t\t-,\t\t\t\t" << double(end - begin) / CLOCKS_PER_SEC * 1000.0 << endl;
+				uaFile << "-,\t\t\t" << target_1_value << ",\t-,\t\t-,\t\t-,\t\t-,\t\t\t-,\t\t\t-,\t\t\t-,\t\t\t\t" << double(end - begin) / CLOCKS_PER_SEC * 1000.0 << endl;
 				//continue;
 			}
 		//}

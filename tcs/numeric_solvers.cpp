@@ -53,7 +53,9 @@
 
 #include "numeric_solvers.h"
 #include "csp_solver_util.h"
+#include "./spdlog/spdlog.h"
 
+#include <future>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -149,9 +151,9 @@ int C_monotonic_eq_solver::solve(double x_guess_1, double x_guess_2, double y_ta
 		iter_solved = 0;
 		return EQUAL_GUESS_VALUES;
 	}
-	
-	// Call function with x guesses
+
 	double y1, y2;
+
 	if( call_mono_eq(x_guess_1, &y1) != 0 )
 	{
 		y1 = std::numeric_limits<double>::quiet_NaN();

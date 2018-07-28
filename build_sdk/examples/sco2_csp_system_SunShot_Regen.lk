@@ -15,15 +15,16 @@ var('site_elevation', 300);		//[m] Site elevation (used to calculate air density
 var('W_dot_net_des', 10);		//[MWe] Design cycle power output (no cooling parasitics)
 
 
-var('is_recomp_ok', 1);			//[-] 1 = yes, 2 = simple cycle only
+var('is_recomp_ok', 1);			//[-] 1 = yes, 0 = simple cycle only
 
 
 var('design_method', 2);		//[-] 1 = Specify efficiency, 2 = Specify total recup UA
 var('des_HX_allocation', 1);    //0 = hit total UA [kW/K], 1 =  hit total Cost [$]
 var('HTR_tech_type', 2);		//1 = Counterflow PCHE, 2 = Regenerator
 var('HTR_target_2', 0);			//0 = Maximum Pressure Drop [kPa], 1 = Aspect Ratio (L/D) [-]
-var('HTR_target_2_value', 216);	//Maximum Pressure Drop [kPa]
-var('HTR_operation_mode', 1);	//[-] 0 = Parallel, 1 = Redundant
+var('HTR_target_2_value', 277.4);	//Maximum Pressure Drop Parallel [kPa]
+//var('HTR_target_2_value', 355.4);	//Maximum Pressure Drop Redundant[kPa]
+var('HTR_operation_mode', 0);	//[-] 0 = VDO1, 1 = VDO2
 var('HTR_P_0', 145);		    //[s] Bed switching time
 var('HTR_D_s', 0.0017);		    //[m] Bed sphere diameter
 var('HTR_e_v', 0.37);		    //[-] Free volume fraction
@@ -209,7 +210,7 @@ if( false )
 	var('HT_recup_eff_max', eta_HTR_max);	//[-] Maximum possible effectiveness in HT recuperator
 	
 	outln("1.7mm-145s-0.98");
-	for(UA = 1000000; UA <= 8250000; UA = UA + 250000)
+	for(UA = 1500000; UA <= 1500000; UA = UA + 250000)
 	{
 		var('UA_recup_tot_des', UA);
 		outln("   Cost: ", UA);
@@ -231,10 +232,10 @@ if( false )
 		var('UA_recup_tot_des', UA);
 		outln("   Cost: ", UA);
 		run('sco2_csp_system');
-	}
+	}*/
 	
 	//3mm-45s-0.98
-	var('HTR_tech_type', 2);		//1 = Counterflow PCHE, 2 = Regenerator
+	/*var('HTR_tech_type', 2);		//1 = Counterflow PCHE, 2 = Regenerator
 	var('HTR_P_0', 45);		    //[s] Bed switching time
 	var('HTR_D_s', 0.003);		    //[m] Bed sphere diameter
 	eta_LTR_max = 0.98;
@@ -243,12 +244,13 @@ if( false )
 	var('HT_recup_eff_max', eta_HTR_max);	//[-] Maximum possible effectiveness in HT recuperator
 	
 	outln("3mm-45s-0.98");
-	for(UA = 1000000; UA <= 8250000; UA = UA + 250000)
+	for(UA = 1750000; UA <= 8250000; UA = UA + 250000)
 	{
 		var('UA_recup_tot_des', UA);
 		outln("   Cost: ", UA);
 		run('sco2_csp_system');
-	}
+	}*/
+	/*
 	
 	//3mm-45s-0.96
 	var('HTR_tech_type', 2);		//1 = Counterflow PCHE, 2 = Regenerator
@@ -269,8 +271,9 @@ if( false )
 	
 	//Recups-0.98
 	/*var('HTR_tech_type', 1);		//1 = Counterflow PCHE, 2 = Regenerator
-	eta_LTR_max = 0.98;
-	eta_HTR_max = 0.98;
+	eta_HTR_max = 0.94;
+	for(x = 0.94; x >= 0.94; x = x - 0.06){
+	eta_LTR_max = x;
 	var('LT_recup_eff_max', eta_LTR_max);	//[-] Maximum possible effectiveness in LT recuperator
 	var('HT_recup_eff_max', eta_HTR_max);	//[-] Maximum possible effectiveness in HT recuperator
 	
@@ -281,7 +284,8 @@ if( false )
 		outln("   Cost: ", UA);
 		run('sco2_csp_system');
 	}
-	
+	}*/
+	/*
 	//Recups-0.96
 	var('HTR_tech_type', 1);		//1 = Counterflow PCHE, 2 = Regenerator
 	eta_LTR_max = 0.96;

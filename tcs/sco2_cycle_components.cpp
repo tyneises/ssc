@@ -198,7 +198,7 @@ void C_sco2_re_hx_pche::initialize(int N_sub_hx)
 	return;
 }
 
-void C_sco2_re_hx_pche::set_HTR_params(int target_1, int target_2, int operation_mode, double target_2_value, double P_0, double D_s, double e_v, double Q_dot_loss)
+void C_sco2_re_hx_pche::set_HTR_params(int target_1, int target_2, int operation_mode, int valveMode, double target_2_value, double P_0, double D_s, double e_v, double Q_dot_loss)
 {
 	return;
 }
@@ -266,9 +266,9 @@ void C_sco2_re_hx_regen::initialize(int N_sub_hx)
 	return;
 }
 
-void C_sco2_re_hx_regen::set_HTR_params(int target_1, int target_2, int operation_mode, double target_2_value, double P_0, double D_s, double e_v, double Q_dot_loss)
+void C_sco2_re_hx_regen::set_HTR_params(int target_1, int target_2, int operation_mode, int valveMode, double target_2_value, double P_0, double D_s, double e_v, double Q_dot_loss)
 {
-	mc_hx.set_params(target_1, target_2, operation_mode, target_2_value, P_0, D_s, e_v, Q_dot_loss);
+	mc_hx.set_params(target_1, target_2, operation_mode, valveMode, target_2_value, P_0, D_s, e_v, Q_dot_loss);
 
 	return;
 }

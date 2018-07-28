@@ -42,6 +42,7 @@ private:
 
 	targetModes::targetModes target_1;
 	targetModes::target2Modes target_2;
+	valveDesignOption::valveModes valveMode;
 	double target_2_value;
 	double P_0;
 	double D_s;
@@ -55,14 +56,14 @@ private:
 		Heat exchanger needs two modules. One for the hot flow and one for cold flow.
 		Hot flow + cold flow modules form a set.
 		Usually number of sets is 2.
-		\sa operationModes
+		\sa valveDesignOption
 	*/
 	int modulesInParallel = 2;
 
-	/*! \brief Sets regenerator operation mode. See operationModes. [-]		
-		\sa operationModes
+	/*! \brief Sets regenerator operation mode. See valveDesignOption. [-]		
+		\sa valveDesignOption
 	*/
-	operationModes::operationModes operationMode;
+	valveDesignOption::valveDesignOption operationMode;
 
 	/*! \brief Total cost of the regenerator. [$]
 	
@@ -97,7 +98,7 @@ private:
 		\param e_v Porosity or ratio of empty space inside of the heat exchanger to its total volume
 		\sa setInletState(), setDesignTargets()
 	*/
-	void setParameters(operationModes::operationModes operationMod, double Q_dot_loss, double P_0, double D_s, double e_v);
+	void setParameters(valveDesignOption::valveDesignOption operationMode, valveDesignOption::valveModes valveMode, double Q_dot_loss, double P_0, double D_s, double e_v);
 
 	/*!	\brief Sets design parameters.
 	
@@ -123,7 +124,7 @@ public:
 	*/
 	int getDesignSolution();
 
-	void set_params(int target_1, int target_2, int operation_mode, double target_2_value, double P_0, double D_s, double e_v, double Q_dot_loss);
+	void set_params(int target_1, int target_2, int operation_mode, int valveMode, double target_2_value, double P_0, double D_s, double e_v, double Q_dot_loss);
 	
 	int getDesignSolution(double* results);
 

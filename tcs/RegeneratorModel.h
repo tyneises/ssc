@@ -8,16 +8,21 @@
 #include <ctime>
 
 
-namespace operationModes {
-	/*! /brief Two operation modes are 'PARALLEL' and 'REDUNDANT'.
-		'PARALLEL' - massflow is equally split between RegenHX::numberOfSets
+namespace valveDesignOption {
+	/*! /brief Two operation modes are 'VDO1' and 'VDO2'.
+		'VDO1' - massflow is equally split between RegenHX::numberOfSets
 
-		'REDUNDANT' - each of modules can handle full mass - flow and only one set out of
+		'VDO2' - each of modules can handle full mass - flow and only one set out of
 		RegenHX::numberOfSets operates at a time.	
 	*/
-	enum operationModes {
-		PARALLEL,
-		REDUNDANT
+	enum valveDesignOption {
+		VDO1,
+		VDO2
+	};
+
+	enum valveModes {
+		FIXED_CV,
+		FIXED_DP
 	};
 }
 namespace targetModes {
@@ -131,6 +136,14 @@ private:
 	CO2_state CO2State;
 
 	valve* valves;
+
+	int valveIndex;
+
+	double dP_H_total;
+
+	double dP_C_total;
+
+	double targetdP_total;
 
 	//! Used to store error codes produced by CO2_state class methods. 
 	int error;
@@ -496,6 +509,8 @@ private:
 
 	targetModes::target2Modes secondTargetMode;
 
+	valveDesignOption::valveModes valveMode;
+
 	/*! \brief Thickness of the insulation on the inside of the D_shell pipe [m]
 		\sa D_fr, D_shell
 	*/
@@ -717,6 +732,7 @@ private:
 	*/
 	void calculateModel();
 
+	void calcValvePressureDrops();
 	void calculateValveCvs();
 
 	//! Loads lookup tables into memory for quick access.
@@ -748,24 +764,24 @@ private:
 	/*! \brief Monotonic equation solver that finds D_fr that hits targetParameter for dP_max target2Mode.
 		\sa Diameter_dP_ME
 	*/
-	MonoSolver<RegeneratorModel>* Diameter_dP;
-
-	/*! \brief Monotonic equation solver that finds D_fr that hits targetParameter for AR target2Mode.
-	\sa Diameter_dP_ME
-	*/
-	MonoSolver<RegeneratorModel>* Diameter_AR;
+	MonoSolver<RegeneratorModel>* Diameter;
 
 	/*! \brief Monotonic equation solver that balances carryover mass flow and regenerator mass flow.
 		\sa CarryoverMassFlow_dP_ME
 	*/
-	MonoSolver<RegeneratorModel>* CarryoverMassFlow_dP;
-
-	MonoSolver<RegeneratorModel>* CarryoverMassFlow_AR;
+	MonoSolver<RegeneratorModel>* CarryoverMassFlow;
 
 	/*! \brief Monotonic equation solver that calculates wall thickness.
 		\sa WallThickness_ME
 	*/
 	MonoSolver<RegeneratorModel>* WallThickness;
+
+	/*! \brief Monotonic equation solver that splits pressure drop between valves and regenerator itself.
+	-	\sa PressureSplit_ME
+	-	*/
+	MonoSolver<RegeneratorModel>* PressureSplit;
+	
+	MonoSolver<RegeneratorModel>* Valve;
 
 	/* \breif Integrates Density*dL of CO2 along the regenerator bed.
 		Linear temperature distribution with respect to L inside of the regenerator is assumed.
@@ -789,11 +805,11 @@ private:
 	SolverParameters<RegeneratorModel> HotPressureDrop_SP;
 	SolverParameters<RegeneratorModel> ColdPressureDrop_SP;
 	SolverParameters<RegeneratorModel> Length_SP;
-	SolverParameters<RegeneratorModel> Diameter_dP_SP;
-	SolverParameters<RegeneratorModel> Diameter_AR_SP;
-	SolverParameters<RegeneratorModel> CarryoverMassFlow_dP_SP;
-	SolverParameters<RegeneratorModel> CarryoverMassFlow_AR_SP;
+	SolverParameters<RegeneratorModel> Diameter_SP;
+	SolverParameters<RegeneratorModel> CarryoverMassFlow_SP;
 	SolverParameters<RegeneratorModel> WallThickness_SP;
+	SolverParameters<RegeneratorModel> PressureSplit_SP;
+	SolverParameters<RegeneratorModel> Valve_SP;
 
 public:
 	RegeneratorModel();
@@ -826,7 +842,7 @@ public:
 		\param e_v Porosity or ratio of empty space inside of the heat exchanger to its total volume
 		\sa setInletState(), setDesignTargets()
 	*/
-	void setParameters(double Q_dot_loss, double P_0, double D_s, double e_v);
+	void setParameters(valveDesignOption::valveModes valveMode, double Q_dot_loss, double P_0, double D_s, double e_v);
 
 	/*!	\brief Sets design parameters.
 
@@ -845,9 +861,12 @@ public:
 	int Length_ME(double L, double * dP_max);
 	int Diameter_dP_ME(double D_fr, double * targetParameter);
 	int Diameter_AR_ME(double D_fr, double * targetParameter);
-	int CarryoverMassFlow_dP_ME(double m_dot_carryover, double * comass_difference);
-	int CarryoverMassFlow_AR_ME(double m_dot_carryover, double * comass_difference);
+	int CarryoverMassFlow_FIXED_DP_ME(double m_dot_carryover, double * comass_difference);
+	int CarryoverMassFlow_FIXED_CV_ME(double m_dot_carryover, double * comass_difference);
 	int WallThickness_ME(double th, double * stressAmplitude);
+	int Valve_ME(double dP, double * dP_difference);
+	int PressureSplit_ME(double regenMaxDrop_guess, double * diffRegenMaxdrop);
+	
 
 	int getDesignSolution();
 	int getOffDesignSolution();

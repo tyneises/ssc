@@ -10,6 +10,11 @@ var("parameters.P_0", 145);
 var("parameters.D_s", 0.0017);
 var("parameters.e_v", 0.37);
 
-var("targets.targetdP_max", 277.4);
-var("targets.targetCost", 750115);
+var("targets.target_1", 1); 		//[0] UA, [1] Cost, [2] Eff
+var("targets.target_2", 0);			//[0] dP_max, [1] Aspect Ratio
+var("targets.operationMode", 0);	//[0] Parallel, [1] Redundant
+var("targets.valveMode", 1);		//[0] Fixed CV, [1] Fixed dP
+
+var("targets.target_2_value", 277);
+var("targets.target_1_value", 120000);
 run("regenhx");

@@ -1979,16 +1979,18 @@ void C_RecompCycle::design_core_standard(int & error_code)
 	}
 	
 	mpc_HTR->initialize(ms_des_par.m_N_sub_hxrs);
+	
+	//[0] Fixed_CV, [1] Fixed_DP 
+	int valveMode = 0;
 
 	if (ms_des_par.m_des_HX_allocation_type == 0) {
-		mpc_HTR->set_HTR_params(targetModes::UA, ms_des_par.m_HTR_target_2, ms_des_par.m_HTR_operation_mode, ms_des_par.m_HTR_target_2_value, ms_des_par.m_HTR_P_0, ms_des_par.m_HTR_D_s,
+		mpc_HTR->set_HTR_params(targetModes::UA, ms_des_par.m_HTR_target_2, ms_des_par.m_HTR_operation_mode, valveMode, ms_des_par.m_HTR_target_2_value, ms_des_par.m_HTR_P_0, ms_des_par.m_HTR_D_s,
 																	ms_des_par.m_HTR_e_v, ms_des_par.m_HTR_Q_dot_loss);
 	}
 	else if (ms_des_par.m_des_HX_allocation_type == 1) {
-		mpc_HTR->set_HTR_params(targetModes::COST, ms_des_par.m_HTR_target_2, ms_des_par.m_HTR_operation_mode, ms_des_par.m_HTR_target_2_value, ms_des_par.m_HTR_P_0, ms_des_par.m_HTR_D_s,
+		mpc_HTR->set_HTR_params(targetModes::COST, ms_des_par.m_HTR_target_2, ms_des_par.m_HTR_operation_mode, valveMode, ms_des_par.m_HTR_target_2_value, ms_des_par.m_HTR_P_0, ms_des_par.m_HTR_D_s,
 			ms_des_par.m_HTR_e_v, ms_des_par.m_HTR_Q_dot_loss);
 	}
-	
 
 	// Initialize a few variables
 	double m_dot_t, m_dot_mc, m_dot_rc, Q_dot_LT, Q_dot_HT, UA_LT_calc, UA_HT_calc;
@@ -2115,9 +2117,11 @@ void C_RecompCycle::design_core_standard(int & error_code)
 		m_objective_metric_last = m_eta_thermal_calc_last;
 	}
 
+	
+	//spdlog::get("logger")->error("Cycle Eff = " + std::to_string(m_eta_thermal_calc_last));
+
 	ms_des_solved.ms_LTR_des_solved = mc_LT_recup.ms_des_solved;
 	ms_des_solved.ms_HTR_des_solved = *mpc_HTR->get_des_solved();
-	//spdlog::get("logger")->error("Cycle Eff = " + std::to_string(m_eta_thermal_calc_last));
 
 	m_m_dot_mc = m_dot_mc;
 	m_m_dot_rc = m_dot_rc;
@@ -2851,10 +2855,15 @@ void C_RecompCycle::opt_design_core(int & error_code)
 
 	if( !ms_opt_des_par.m_fixed_LT_frac )
 	{
-		if (ms_opt_des_par.m_des_HX_allocation_type == 1 && ms_opt_des_par.m_HTR_tech_type == 2) {
-			x.push_back(1 - 800000 / ms_opt_des_par.m_UA_rec_total);
-			lb.push_back(1 - 1000000 / ms_opt_des_par.m_UA_rec_total);
-			ub.push_back(1 - 600000 / ms_opt_des_par.m_UA_rec_total);
+		if (ms_opt_des_par.m_des_HX_allocation_type == 1 && ms_opt_des_par.m_HTR_tech_type == 2 && ms_opt_des_par.m_HTR_operation_mode == 0) {
+			x.push_back(1 - 1250000 / ms_opt_des_par.m_UA_rec_total);
+			lb.push_back(1 - 1750000 / ms_opt_des_par.m_UA_rec_total);
+			ub.push_back(1 - 1200000 / ms_opt_des_par.m_UA_rec_total);
+		}
+		else if (ms_opt_des_par.m_des_HX_allocation_type == 1 && ms_opt_des_par.m_HTR_tech_type == 2 && ms_opt_des_par.m_HTR_operation_mode == 1) {
+			x.push_back(1 - 1500000 / ms_opt_des_par.m_UA_rec_total);
+			lb.push_back(1 - 2000000 / ms_opt_des_par.m_UA_rec_total);
+			ub.push_back(1 - 1200000 / ms_opt_des_par.m_UA_rec_total);
 		}
 		else {
 			x.push_back(ms_opt_des_par.m_LT_frac_guess);

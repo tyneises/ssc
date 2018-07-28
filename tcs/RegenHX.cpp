@@ -3,7 +3,7 @@
 RegenHX::RegenHX()
 {
 	regenModel = new RegeneratorModel();
-	valves = new valve[4];
+	valves = new valve[5];
 }
 
 RegenHX::~RegenHX()
@@ -43,14 +43,11 @@ int RegenHX::getDesignSolution()
 		valves[i] = solution.valves[i];
 	}
 
-	if (operationMode == operationModes::PARALLEL) {
-		costHX *= modulesInParallel;
+	costHX *= modulesInParallel;
+	if (operationMode == valveDesignOption::VDO1) {
 		UA *= modulesInParallel;
 		Q_dot_a *= modulesInParallel;
 		m_dot_carryover *= modulesInParallel;
-	}
-	if (operationMode == operationModes::REDUNDANT) {
-		costHX *= 2;
 	}
 
 	costHX += costValves;
@@ -58,12 +55,13 @@ int RegenHX::getDesignSolution()
 	return status;
 }
 
-void RegenHX::set_params(int target_1, int target_2, int operation_mode, double target_2_value, double P_0, double D_s, double e_v, double Q_dot_loss)
+void RegenHX::set_params(int target_1, int target_2, int operation_mode, int valveMode, double target_2_value, double P_0, double D_s, double e_v, double Q_dot_loss)
 {
 	this->target_1 = static_cast<targetModes::targetModes>(target_1) ;
 	this->target_2 = static_cast<targetModes::target2Modes>(target_2);
+	this->valveMode = static_cast<valveDesignOption::valveModes>(valveMode);
 	this->target_2_value = target_2_value;
-	this->operationMode = static_cast<operationModes::operationModes>(operation_mode);
+	this->operationMode = static_cast<valveDesignOption::valveDesignOption>(operation_mode);
 	this->P_0 = P_0;
 	this->D_s = D_s;
 	this->Q_dot_loss = Q_dot_loss;
@@ -145,44 +143,62 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 	}
 
 	//High Pressure Low Temperature. T_c_in
-	valves[0].cost = 36000;
-	//valves[0].cv = 950;
 	valves[0].dP = 8.6;
-	//High Pressure High Temperature. T_c_out
-	valves[1].cost = 74000;
-	//valves[1].cv = 1100;
-	valves[1].dP = 13;
-	//Low Pressure High Temperature. T_h_in
-	valves[2].cost = 101000;
-	//valves[2].cv = 1750;
-	valves[2].dP = 16;
-	//Low Pressure Low Temperature. T_h_out
-	valves[3].cost = 36000;
-	//valves[3].cv = 950;
-	valves[3].dP = 29.6;
+	valves[0].cost = 36000;
+	valves[0].cv = 950;
 
-	if (operationMode == operationModes::PARALLEL) {
-		costValves = 474000;
+	//High Pressure High Temperature. T_c_out
+	valves[1].dP = 13;
+	valves[1].cost = 74000;
+	valves[1].cv = 1100;
+
+	//Low Pressure High Temperature. T_h_in
+	valves[2].dP = 16;
+	valves[2].cost = 101000;
+	valves[2].cv = 1750;
+
+	//Low Pressure Low Temperature. T_h_out
+	valves[3].dP = 29.6;
+	
+	valves[4].cost = 15000;
+
+	if (operationMode == valveDesignOption::VDO1) {
+		valves[3].cost = 36000;
+		valves[3].cv = 950;
 	}
-	else if (operationMode == operationModes::REDUNDANT) {
-		costValves = 550000;
+	else if (operationMode == valveDesignOption::VDO2) {
+		valves[3].cost = 59000;
+		valves[3].cv = 1600;
 	}
 	
+	costValves = 4 * (valves[0].cost + valves[1].cost + valves[2].cost + valves[3].cost) + 2 * valves[4].cost;
+
 	regenModel->setValves(valves);
 
 	targetModes::target2Modes secondTargetMode = target_2;
 	
 	double dP_max_Regen;
 	if (secondTargetMode == targetModes::dP_max) {
-		dP_max_Regen = max((P_h_in - P_h_out) / f_dP - valves[2].dP - valves[3].dP, (P_c_in - P_c_out) / f_dP - valves[0].dP - valves[1].dP);
+		if (valveMode == valveDesignOption::FIXED_DP) {
+			dP_max_Regen = max((P_h_in - P_h_out) / f_dP - valves[2].dP - valves[3].dP, (P_c_in - P_c_out) / f_dP - valves[0].dP - valves[1].dP);
+		}
+		else if (valveMode == valveDesignOption::FIXED_CV) {
+			dP_max_Regen = max((P_h_in - P_h_out) / f_dP, (P_c_in - P_c_out) / f_dP);
+		}
 	}
 	else if (secondTargetMode == targetModes::AR) {
 		dP_max_Regen = target_2_value;
 	}
 	
 
-	setParameters(operationMode, Q_dot_loss, P_0, D_s, e_v);
-	setInletStates(T_h_in, P_h_in - valves[2].dP, m_dot_h, T_c_in, P_c_in - valves[0].dP, m_dot_c);
+	setParameters(operationMode, valveMode, Q_dot_loss, P_0, D_s, e_v);
+
+	if (valveMode == valveDesignOption::FIXED_DP) {
+		setInletStates(T_h_in, P_h_in - valves[2].dP, m_dot_h, T_c_in, P_c_in - valves[0].dP, m_dot_c);
+	}
+	else if (valveMode == valveDesignOption::FIXED_CV) {
+		setInletStates(T_h_in, P_h_in, m_dot_h, T_c_in, P_c_in, m_dot_c);
+	}
 
 	if (targetType == 0) {
 		setDesignTargets(targetModes::UA, secondTargetMode, targetValue, dP_max_Regen);
@@ -206,8 +222,15 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 		ms_des_solved.m_eff_limited = true;
 		double oldUA = UA;
 		double oldCostHX = costHX;
-		setParameters(operationMode, Q_dot_loss, P_0, D_s, e_v);
-		setInletStates(T_h_in, P_h_in - valves[2].dP, m_dot_h, T_c_in, P_c_in - valves[0].dP, m_dot_c);
+		setParameters(operationMode, valveMode, Q_dot_loss, P_0, D_s, e_v);
+
+		if (valveMode == valveDesignOption::FIXED_DP) {
+			setInletStates(T_h_in, P_h_in - valves[2].dP, m_dot_h, T_c_in, P_c_in - valves[0].dP, m_dot_c);
+		}
+		else if (valveMode == valveDesignOption::FIXED_CV) {
+			setInletStates(T_h_in, P_h_in, m_dot_h, T_c_in, P_c_in, m_dot_c);
+		}
+
 		setDesignTargets(targetModes::EFF, secondTargetMode, eff_limit, dP_max_Regen);
 
 		status = getDesignSolution();
@@ -226,8 +249,29 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 	T_c_out = T_C_out;
 	T_h_out = T_H_out;
 
-	ms_des_solved.m_DP_cold_des = (m_HTR_HP_dP + valves[0].dP + valves[1].dP) * f_dP;
-	ms_des_solved.m_DP_hot_des = (m_HTR_LP_dP + valves[2].dP + valves[3].dP) * f_dP;
+	if (valveMode == valveDesignOption::FIXED_DP) {
+		ms_des_solved.m_DP_cold_des = (m_HTR_HP_dP + valves[0].dP + valves[1].dP) * f_dP;
+		ms_des_solved.m_DP_hot_des = (m_HTR_LP_dP + valves[2].dP + valves[3].dP) * f_dP;
+
+		ms_des_solved.m_HTR_valve_HTHP_cv = valves[1].cv;
+		ms_des_solved.m_HTR_valve_LTHP_cv = valves[0].cv;
+		ms_des_solved.m_HTR_valve_HTLP_cv = valves[2].cv;
+		ms_des_solved.m_HTR_valve_LTLP_cv = valves[3].cv;
+	}
+	else if (valveMode == valveDesignOption::FIXED_CV) {
+		ms_des_solved.m_DP_cold_des = m_HTR_HP_dP * f_dP;
+		ms_des_solved.m_DP_hot_des = m_HTR_LP_dP * f_dP;
+
+		ms_des_solved.m_HTR_valve_HTHP_cv = valves[1].dP;
+		ms_des_solved.m_HTR_valve_LTHP_cv = valves[0].dP;
+		ms_des_solved.m_HTR_valve_HTLP_cv = valves[2].dP;
+		ms_des_solved.m_HTR_valve_LTLP_cv = valves[3].dP;
+	}
+	ms_des_solved.m_HTR_valve_HTHP_cv = valves[1].dP;
+	ms_des_solved.m_HTR_valve_LTHP_cv = valves[0].dP;
+	ms_des_solved.m_HTR_valve_HTLP_cv = valves[2].dP;
+	ms_des_solved.m_HTR_valve_LTLP_cv = valves[3].dP;
+	
 	ms_des_solved.m_eff_design = epsilon;
 	ms_des_solved.m_min_DT_design = min((T_H_in - T_H_out), (T_C_out - T_C_in));
 	ms_des_solved.m_NTU_design = NTU_R_e;
@@ -237,10 +281,6 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 	ms_des_solved.m_HTR_AR = AspectRatio;
 	ms_des_solved.m_HTR_D_fr = D_fr;
 	ms_des_solved.m_HTR_L = L;
-	ms_des_solved.m_HTR_valve_HTHP_cv = valves[1].cv;
-	ms_des_solved.m_HTR_valve_LTHP_cv = valves[0].cv;
-	ms_des_solved.m_HTR_valve_HTLP_cv = valves[2].cv;
-	ms_des_solved.m_HTR_valve_LTLP_cv = valves[3].cv;
 
 	if (targetType == 0 || targetType == 2) {
 		ms_des_solved.m_UA_design_total = UA;
@@ -288,7 +328,7 @@ void RegenHX::setInletStates(double T_H_in, double P_H_in, double m_dot_H, doubl
 	this->m_dot_H = m_dot_H;
 	this->m_dot_C = m_dot_C;
 
-	if (this->operationMode == operationModes::PARALLEL) {
+	if (this->operationMode == valveDesignOption::VDO1) {
 		regenModel->setInletStates(T_H_in, P_H_in, m_dot_H / modulesInParallel, T_C_in, P_C, m_dot_C / modulesInParallel);
 	}
 	else {
@@ -296,15 +336,16 @@ void RegenHX::setInletStates(double T_H_in, double P_H_in, double m_dot_H, doubl
 	}
 }
 
-void RegenHX::setParameters(operationModes::operationModes operationMode, double Q_dot_loss, double P_0, double D_s, double e_v)
+void RegenHX::setParameters(valveDesignOption::valveDesignOption operationMode, valveDesignOption::valveModes valveMode, double Q_dot_loss, double P_0, double D_s, double e_v)
 {
 	this->operationMode = operationMode;
-	regenModel->setParameters(Q_dot_loss, P_0, D_s, e_v);
+	this->valveMode = valveMode;
+	regenModel->setParameters(valveMode, Q_dot_loss, P_0, D_s, e_v);
 }
 
 void RegenHX::setDesignTargets(targetModes::targetModes targetMode, targetModes::target2Modes secondTargetMode, double targetParameter, double secondTargetParameter)
 {
-	if (targetMode != targetModes::EFF && this->operationMode == operationModes::PARALLEL) {
+	if (targetMode != targetModes::EFF) {
 		regenModel->setDesignTargets(targetMode, secondTargetMode, targetParameter / modulesInParallel, secondTargetParameter);
 	} else {
 		regenModel->setDesignTargets(targetMode, secondTargetMode, targetParameter, secondTargetParameter);
