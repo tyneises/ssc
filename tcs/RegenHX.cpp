@@ -212,7 +212,7 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 
 	int status = getDesignSolution();
 
-	if (status < 0) {
+	/*if (status < 0) {
 		resetDesignStructure();
 		throw(C_csp_exception("RegenHX::design",
 			"Regenerator model failed!"));
@@ -292,7 +292,7 @@ void RegenHX::design_fix_TARGET_calc_outlet(int targetType /*-*/, double targetV
 
 	ms_des_solved.m_aUA_design_total = UA;
 	ms_des_solved.m_cost_design_total = costHX;
-	ms_des_solved.m_m_dot_carryover = m_dot_carryover;
+	ms_des_solved.m_m_dot_carryover = m_dot_carryover;*/
 }
 
 void RegenHX::off_design_solution(double T_c_in, double P_c_in, double m_dot_c, double P_c_out, double T_h_in, double P_h_in, double m_dot_h, double P_h_out, double & q_dot, double & T_c_out, double & T_h_out)

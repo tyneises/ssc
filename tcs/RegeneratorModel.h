@@ -6,6 +6,7 @@
 #include "numeric_solvers.h"
 #include "definitions.h"
 #include <ctime>
+#include "C:/Users/Dmitrii/source/repos/Solver/Solver/Solver.h"
 
 
 namespace valveDesignOption {
@@ -854,6 +855,12 @@ public:
 	*/
 	void setDesignTargets(targetModes::targetModes targetMode, targetModes::target2Modes secondTargetMode, double targetParameter, double secondTargetParameter);
 
+	void differences(int n, Eigen::VectorXd& point, Eigen::VectorXd& targets, Eigen::VectorXd& steps, Eigen::MatrixXd& values);
+	void evaluate(int n, Eigen::VectorXd& point, Eigen::VectorXd& targets, Eigen::VectorXd& values);
+
+	void setSolver(Eigen::VectorXd& params);
+	double stressAmplitude_calc;
+	double m_dot_carryover_guess;
 
 	int HeatTransfer_ME(double T_H_out, double * QdotAsDifference);
 	int HotPressureDrop_ME(double dP_H, double * dP_HsDifference);
@@ -863,7 +870,7 @@ public:
 	int Diameter_AR_ME(double D_fr, double * targetParameter);
 	int CarryoverMassFlow_FIXED_DP_ME(double m_dot_carryover, double * comass_difference);
 	int CarryoverMassFlow_FIXED_CV_ME(double m_dot_carryover, double * comass_difference);
-	int WallThickness_ME(double th, double * stressAmplitude);
+	void calculateStress();
 	int Valve_ME(double dP, double * dP_difference);
 	int PressureSplit_ME(double regenMaxDrop_guess, double * diffRegenMaxdrop);
 	

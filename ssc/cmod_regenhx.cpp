@@ -164,7 +164,7 @@ public:
 				HT_regen->set_params(target_1, target_2, operationMode, valveMode, target_2_value, P_0, D_s, e_v, Q_dot_loss);
 				HT_regen->design_fix_TARGET_calc_outlet(target_1, target_1_value, 0.99, T_C_in, P_C, m_dot_C, P_C, T_H_in, P_H, m_dot_H, P_H - target_2_value, q_dot, T_c_out, T_h_out);
 				end = clock();
-				sprintf(output, format,
+				/*sprintf(output, format,
 					HT_regen->ms_des_solved.m_eff_design,
 					HT_regen->ms_des_solved.m_aUA_design_total,
 					HT_regen->ms_des_solved.m_Q_dot_design,
@@ -180,8 +180,8 @@ public:
 					HT_regen->ms_des_solved.m_HTR_valve_LTHP_cv,
 					HT_regen->ms_des_solved.m_HTR_valve_HTLP_cv,
 					HT_regen->ms_des_solved.m_HTR_valve_LTLP_cv,
-					double(end - begin) / CLOCKS_PER_SEC * 1000.0);
-				uaFile << output << endl;
+					double(end - begin) / CLOCKS_PER_SEC * 1000.0);*/
+				uaFile << double(end - begin) / CLOCKS_PER_SEC * 1000.0 << endl;
 				uaFile.flush();
 			}
 			catch(C_csp_exception &){
