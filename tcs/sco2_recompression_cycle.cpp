@@ -1862,6 +1862,10 @@ void C_RecompCycle::calculateLCOE()
 
 
 void C_RecompCycle::turbomachineryCost() {
+	/*ms_des_solved.m_MC_cost = 1200 * fabs(m_W_dot_mc);
+	ms_des_solved.m_RC_cost = 1200 * fabs(m_W_dot_rc);
+	ms_des_solved.m_Turbine_cost = 375 * m_W_dot_t;*/
+
 	ms_des_solved.m_MC_cost = 6898 * pow(fabs(m_W_dot_mc), 0.7865);
 	ms_des_solved.m_RC_cost = 6898 * pow(fabs(m_W_dot_rc), 0.7865);
 	ms_des_solved.m_Turbine_cost = 7790 * pow(fabs(m_W_dot_t), 0.6842);
