@@ -508,6 +508,7 @@ void RegeneratorModel::carryoverEnthDrop()
 }
 
 int RegeneratorModel::HeatTransfer_ME(double T_H_out, double * QdotAsDifference) {
+	spdlog::get("logger")->info("T_H_out\n");
 	this->T_H_out = T_H_out;
 
 	if (T_H_out > T_H_in || T_H_out < T_C_in) {
@@ -527,6 +528,7 @@ int RegeneratorModel::HeatTransfer_ME(double T_H_out, double * QdotAsDifference)
 
 int RegeneratorModel::HotPressureDrop_ME(double dP_H, double * dP_HsDifference)
 {
+	spdlog::get("logger")->info("dP_H\n");
 	this->dP_H = dP_H;
 
 	if (HeatTransfer->solve() != C_monotonic_eq_solver::CONVERGED) {
@@ -539,6 +541,7 @@ int RegeneratorModel::HotPressureDrop_ME(double dP_H, double * dP_HsDifference)
 
 int RegeneratorModel::ColdPressureDrop_ME(double dP_C, double * dP_CsDifference)
 {
+	spdlog::get("logger")->info("dP_C\n");
 	this->dP_C = dP_C;
 
 	if (HotPressureDrop->solve() != C_monotonic_eq_solver::CONVERGED) {
@@ -551,6 +554,7 @@ int RegeneratorModel::ColdPressureDrop_ME(double dP_C, double * dP_CsDifference)
 
 int RegeneratorModel::Length_ME(double L, double * dP_max)
 {
+	spdlog::get("logger")->info("L\n");
 	this->L = L;
 
 	int status = ColdPressureDrop->solve();
@@ -567,6 +571,7 @@ int RegeneratorModel::Length_ME(double L, double * dP_max)
 
 int RegeneratorModel::Diameter_dP_ME(double D_fr, double * targetParameter)
 {
+	spdlog::get("logger")->info("D_fr\n");
 	this->D_fr = D_fr;
 
 	int status = Length->solve();
@@ -639,6 +644,7 @@ int RegeneratorModel::CarryoverMassFlow_FIXED_CV_ME(double m_dot_carryover, doub
 
 int RegeneratorModel::CarryoverMassFlow_FIXED_DP_ME(double m_dot_carryover, double *comass_difference)
 {
+	spdlog::get("logger")->info("Carryover\n");
 	this->m_dot_C -= m_dot_carryover;
 	this->m_dot_H -= m_dot_carryover;
 
@@ -660,6 +666,7 @@ int RegeneratorModel::CarryoverMassFlow_FIXED_DP_ME(double m_dot_carryover, doub
 
 int RegeneratorModel::WallThickness_ME(double th, double * stressAmplitude)
 {
+	spdlog::get("logger")->info("WT\n");
 	wallThickness = th;
 
 	R_o = R_i + wallThickness;
